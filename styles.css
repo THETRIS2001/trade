@@ -1,0 +1,1083 @@
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2980b9;
+    --accent-color: #f39c12;
+    --text-color: #333;
+    --light-text: #666;
+    --light-gray: #f4f4f4;
+    --white: #fff;
+    --success-color: #2ecc71;
+    --error-color: #e74c3c;
+    --border-color: #ddd;
+    --hover-color: #f7f7f7;
+    --shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: #f9f9f9;
+}
+
+.container {
+    max-width: 92%;
+    margin: 0 auto;
+    padding: 20px;
+    padding-bottom: 50px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    color: var(--primary-color);
+    font-size: 2.5rem;
+    margin-top: 20px;
+}
+
+/* Upload Section */
+.upload-section {
+    margin-bottom: 40px;
+}
+
+.upload-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.upload-area {
+    border: 2px dashed var(--primary-color);
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    background-color: var(--white);
+    transition: var(--transition);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-area:hover {
+    border-color: var(--secondary-color);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.upload-content {
+    position: relative;
+    z-index: 2;
+}
+
+.upload-icon-container {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 20px;
+}
+
+.upload-icon {
+    font-size: 48px;
+    color: var(--primary-color);
+    position: relative;
+    z-index: 2;
+    transition: var(--transition);
+}
+
+.upload-icon-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background-color: rgba(52, 152, 219, 0.1);
+    border-radius: 50%;
+    z-index: 1;
+    transition: all 0.5s ease;
+}
+
+.upload-area:hover .upload-icon-circle {
+    width: 100px;
+    height: 100px;
+    background-color: rgba(52, 152, 219, 0.2);
+}
+
+.upload-area:hover .upload-icon {
+    transform: scale(1.1);
+    color: var(--secondary-color);
+}
+
+.upload-area h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    transition: var(--transition);
+}
+
+.upload-area:hover h3 {
+    color: var(--secondary-color);
+}
+
+.upload-area p {
+    color: var(--light-text);
+    margin-bottom: 20px;
+}
+
+.upload-btn {
+    background-color: var(--primary-color);
+    color: var(--white);
+    border: none;
+    border-radius: 30px;
+    padding: 12px 30px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-btn:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.upload-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.upload-btn::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: -100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: all 0.6s ease;
+}
+
+.upload-btn:hover::after {
+    left: 100%;
+}
+
+/* Progress bar */
+.upload-progress {
+    margin-top: 20px;
+    display: none;
+}
+
+.progress-bar {
+    height: 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background-color: var(--primary-color);
+    transition: width 0.5s ease-in-out;
+}
+
+.progress-text {
+    font-size: 14px;
+    color: var(--light-text);
+}
+
+/* File info section */
+.file-info {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: var(--white);
+    border-radius: 16px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideIn {
+    0% {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.file-info-content {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.file-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+.file-excel-logo {
+    width: 32px;
+    height: auto;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.15));
+}
+
+.file-details {
+    flex: 1;
+}
+
+.file-size {
+    color: var(--light-text);
+    font-size: 0.9rem;
+}
+
+.remove-file {
+    background: none;
+    border: none;
+    color: var(--light-text);
+    font-size: 18px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.remove-file:hover {
+    color: var(--error-color);
+}
+
+.process-btn {
+    background-color: var(--success-color);
+    color: var(--white);
+    border: none;
+    border-radius: 30px;
+    padding: 12px 25px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.process-btn i {
+    margin-right: 8px;
+}
+
+.process-btn:hover {
+    background-color: #219653;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.process-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Download Button */
+.download-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.download-btn i {
+    margin-right: 5px;
+}
+
+.download-btn:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.download-btn:active {
+    transform: translateY(0);
+}
+
+/* Aggiorna i controlli della tabella per allineare download e ricerca */
+.table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Area di "Drop" evidenziata */
+.upload-area.highlight {
+    border-color: var(--accent-color);
+    background-color: rgba(243, 156, 18, 0.05);
+    transform: scale(1.02);
+}
+
+/* Additional Values Section */
+.additional-values-section {
+    max-width: 60%;
+    margin: 0 auto 40px;
+    padding: 20px;
+    background-color: var(--white);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.additional-values-section h2 {
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.input-group {
+    display: flex;
+    margin-bottom: 15px;
+}
+
+.input-group input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px 0 0 4px;
+    font-size: 1rem;
+    margin-top: 10px;
+}
+
+.input-group button {
+    border-radius: 0 4px 4px 0;
+    margin-top: 10px;
+}
+
+#added-values-container {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.value-tag {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--light-gray);
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.value-tag.positive {
+    background-color: rgba(46, 204, 113, 0.15);
+    color: #27ae60;
+}
+
+.value-tag.negative {
+    background-color: rgba(231, 76, 60, 0.15);
+    color: #c0392b;
+}
+
+.value-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+.value-tag .remove-value {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-color);
+}
+
+.value-tag .remove-value:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Results Section */
+.results-section {
+    background-color: var(--white);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--light-gray);
+}
+
+.tab-btn {
+    padding: 15px 20px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--light-text);
+    transition: var(--transition);
+}
+
+.tab-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    border-bottom: 3px solid var(--primary-color);
+    background-color: var(--white);
+}
+
+.tab-content {
+    padding: 20px;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Summary Cards */
+.summary-container {
+    text-align: center;
+    padding: 20px;
+}
+
+.summary-container h2 {
+    margin-bottom: 30px;
+    color: var(--primary-color);
+}
+
+.summary-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.summary-card {
+    background-color: var(--white);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    min-width: 200px;
+    flex: 1 1 200px;
+    max-width: 300px;
+    transition: var(--transition);
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.summary-card h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.summary-card .amount {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.summary-card.highlight {
+    background-color: var(--primary-color);
+    color: var(--white);
+}
+
+.summary-card.highlight h3 {
+    color: var(--white);
+}
+
+.summary-card.highlight .amount {
+    color: var(--white);
+}
+
+/* Stili per le carte di riepilogo colorate */
+.summary-card {
+    transition: all 0.3s ease;
+}
+
+/* Carta per il Ricavo Totale Trade - colore in base al valore */
+.summary-card.profit-positive {
+    background-color: rgba(46, 204, 113, 0.15);
+}
+
+.summary-card.profit-positive:hover {
+    background-color: rgba(46, 204, 113, 0.25);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.summary-card.profit-negative {
+    background-color: rgba(231, 76, 60, 0.15);
+}
+
+.summary-card.profit-negative:hover {
+    background-color: rgba(231, 76, 60, 0.25);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Carte per Interessi e Saveback - colore azzurro */
+.summary-card.interest, 
+.summary-card.saveback {
+    background-color: rgba(52, 152, 219, 0.15);
+}
+
+.summary-card.interest:hover, 
+.summary-card.saveback:hover {
+    background-color: rgba(52, 152, 219, 0.25);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Box ricavo totale complessivo con colori più scuri */
+.summary-card.comprehensive.profit-positive {
+    background-color: rgba(39, 174, 96, 0.25);
+}
+
+.summary-card.comprehensive.profit-positive:hover {
+    background-color: rgba(39, 174, 96, 0.35);
+}
+
+.summary-card.comprehensive.profit-negative {
+    background-color: rgba(192, 57, 43, 0.25);
+}
+
+.summary-card.comprehensive.profit-negative:hover {
+    background-color: rgba(192, 57, 43, 0.35);
+}
+
+/* Testo nero per tutte le card, anche quelle con sfondo colorato */
+.summary-card .amount,
+.summary-card h3,
+.summary-card.profit-positive .amount,
+.summary-card.profit-negative .amount,
+.summary-card.interest .amount,
+.summary-card.saveback .amount,
+.summary-card.comprehensive .amount,
+.summary-card.comprehensive h3 {
+    color: var(--text-color);
+}
+
+/* Table Styles */
+.table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    background-color: var(--white);
+    table-layout: auto;
+    border: 1px solid var(--border-color);
+}
+
+/* Stile specifico per il layout della tabella finale */
+#final-table {
+    table-layout: fixed;
+    border: 1px solid var(--border-color);
+}
+
+th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    white-space: normal;
+    font-size: 0.95rem;
+    line-height: 1.3;
+}
+
+/* Rimuovi bordo dall'ultima colonna */
+tr th:last-child, tr td:last-child {
+    border-right: none;
+}
+
+/* Aggiungo un po' di spazio tra le colonne, ma meno di prima */
+th, td {
+    padding-right: 10px;
+}
+
+/* Stile del tooltip per mostrare il testo completo */
+td[title] {
+    cursor: help;
+}
+
+th {
+    background-color: var(--light-gray);
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+    white-space: normal;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+th:hover {
+    background-color: #e8e8e8;
+}
+
+th i {
+    margin-left: 5px;
+}
+
+tr:hover {
+    background-color: var(--hover-color);
+}
+
+tr.highlighted {
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.spinner {
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 5px solid var(--white);
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+    color: var(--white);
+    font-size: 1.2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .upload-area {
+        padding: 20px;
+    }
+    
+    .summary-card {
+        min-width: 100%;
+        margin-bottom: 15px;
+    }
+    
+    .tab-btn {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+    
+    .table-responsive {
+        margin: 0 -10px;
+        width: calc(100% + 20px);
+        display: block;
+        overflow-x: auto;
+        position: relative;
+    }
+    
+    /* Indicatore visivo di scorrimento */
+    .table-responsive::after {
+        content: "← Scorri →";
+        position: absolute;
+        bottom: -25px;
+        right: 10px;
+        font-size: 12px;
+        color: var(--light-text);
+        opacity: 0.8;
+        pointer-events: none;
+    }
+    
+    table {
+        min-width: 650px;
+    }
+    
+    #final-table {
+        min-width: 850px;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .upload-icon {
+        font-size: 36px;
+    }
+    
+    .upload-area h3 {
+        font-size: 1.2rem;
+    }
+    
+    .upload-btn, .process-btn, .btn {
+        width: 100%;
+    }
+    
+    .search-container {
+        width: 100%;
+    }
+    
+    .search-container input {
+        width: calc(100% - 45px);
+    }
+    
+    .tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .tab-content {
+        padding: 15px 10px;
+    }
+    
+    /* Indicatore più evidente su schermi molto piccoli */
+    .table-responsive::after {
+        width: 100%;
+        text-align: center;
+        left: 0;
+        right: 0;
+        font-size: 14px;
+        font-weight: bold;
+    }
+}
+
+/* Ripristina gli stili per la ricerca */
+.search-container {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.search-container input {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px 0 0 4px;
+    font-size: 0.9rem;
+    width: 250px;
+    transition: all 0.3s ease;
+}
+
+.search-container input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.search-container button {
+    background-color: var(--primary-color);
+    color: var(--white);
+    border: none;
+    border-radius: 0 4px 4px 0;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.search-container button:hover {
+    background-color: var(--secondary-color);
+}
+
+/* Stile generale per button non definiti */
+.btn {
+    background-color: var(--primary-color);
+    color: var(--white);
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn:hover {
+    background-color: var(--secondary-color);
+}
+
+/* Excel logo container */
+.excel-logo-container {
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.excel-logo {
+    max-width: 80px;
+    height: auto;
+    transition: all 0.4s ease;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
+}
+
+.upload-area:hover .excel-logo {
+    transform: scale(1.15);
+    filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.3));
+}
+
+/* Animazione di comparsa per il pulsante Elabora File */
+@keyframes appear {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.appear-animation {
+    animation: appear 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.file-info:hover .file-excel-logo {
+    transform: scale(1.1);
+}
+
+/* Stili per evidenziare le righe in base al ricavo o al tipo */
+#final-table tbody tr.profit-positive {
+    background-color: rgba(46, 204, 113, 0.15) !important;
+    transition: background-color 0.3s ease;
+}
+
+#final-table tbody tr.profit-positive:hover {
+    background-color: rgba(46, 204, 113, 0.25) !important;
+}
+
+#final-table tbody tr.profit-negative {
+    background-color: rgba(231, 76, 60, 0.15) !important;
+    transition: background-color 0.3s ease;
+}
+
+#final-table tbody tr.profit-negative:hover {
+    background-color: rgba(231, 76, 60, 0.25) !important;
+}
+
+#final-table tbody tr.type-interest, 
+#final-table tbody tr.type-saveback {
+    background-color: rgba(52, 152, 219, 0.15) !important;
+    transition: background-color 0.3s ease;
+}
+
+#final-table tbody tr.type-interest:hover, 
+#final-table tbody tr.type-saveback:hover {
+    background-color: rgba(52, 152, 219, 0.25) !important;
+}
+
+/* Stile per le righe evidenziate durante la ricerca */
+#final-table tbody tr.highlighted {
+    /* Aggiungi un leggero bordo evidenziato mantenendo il colore di sfondo */
+    box-shadow: inset 0 0 0 2px rgba(255, 193, 7, 0.5);
+}
+
+/* Righe con sfondo alternato per migliorare la leggibilità, ma solo per righe normali che non sono Buy trade */
+#final-table tbody tr:nth-child(even):not(.profit-positive):not(.profit-negative):not(.type-interest):not(.type-saveback):not([class*="type-buy-trade"]) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Aggiungi classe per Buy trade nel CSS */
+#final-table tbody tr.type-buy-trade {
+    background-color: white;
+}
+
+/* Aggiungi effetto hover per le righe Buy trade */
+#final-table tbody tr.type-buy-trade:hover {
+    background-color: var(--hover-color);
+}
+
+/* Stili specifici per rendere la tabella finale più compatta */
+#final-table th, #final-table td {
+    padding: 6px 8px;
+    font-size: 0.9rem;
+    border-right: 1px solid var(--border-color);
+}
+
+#final-table th {
+    font-size: 0.85rem;
+    text-align: center;
+    border-bottom: 2px solid var(--border-color);
+    white-space: normal;
+    line-height: 1.2;
+}
+
+#final-table th i {
+    font-size: 0.8rem;
+    margin-left: 3px;
+}
+
+/* Impedisci l'andata a capo per i valori delle date */
+#final-table td:nth-child(1),
+#final-table td:nth-child(2) {
+    white-space: nowrap;
+}
+
+/* Stile speciale per la cella descrizione */
+#final-table .desc-cell {
+    max-width: 200px;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Stili per associazione valori alle righe */
+.value-association-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.row-selection {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.row-selection label {
+    font-weight: 500;
+    min-width: 70px;
+}
+
+.row-selection select {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: white;
+    font-size: 0.95rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.row-selection select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Modifica del tag valore per mostrare l'associazione */
+.value-tag {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.value-tag-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.value-tag-association {
+    font-size: 0.85rem;
+    color: var(--light-text);
+    margin-top: 3px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Stile per gli header di tabella cliccabili */
+th[data-sort] {
+    cursor: pointer;
+    user-select: none;
+}
+
+th[data-sort]:hover {
+    background-color: #f0f8ff;
+}
+
+/* Stile per gli elementi evidenziati dalla ricerca */
+td.highlight {
+    background-color: #ffffc3;
+    transition: background-color 0.3s ease;
+}
+
+/* Effetto hover per tutte le righe nella tabella finale che non hanno già un proprio effetto hover */
+#final-table tbody tr:not(.profit-positive):not(.profit-negative):not(.type-interest):not(.type-saveback):not(.type-buy-trade):hover {
+    background-color: var(--hover-color);
+}
+
+/* Stile per evidenziare le righe dei valori aggiunti */
+#output-table tbody tr.added-value-row {
+    background-color: rgba(243, 156, 18, 0.15); /* Arancione chiaro trasparente */
+}
+
+#output-table tbody tr.added-value-row:hover {
+    background-color: rgba(243, 156, 18, 0.25); /* Arancione leggermente più intenso in hover */
+}
+
+/* Impedisci l'andata a capo per le date nella tabella di dettaglio operazioni */
+#output-table td:first-child {
+    white-space: nowrap;
+} 

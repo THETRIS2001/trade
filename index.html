@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisi Transazioni Finanziarie</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Analisi Transazioni Finanziarie</h1>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <div class="upload-container">
+                    <div class="upload-area" id="drop-area">
+                        <div class="upload-content">
+                            <div class="excel-logo-container">
+                                <img src="logo.png" alt="Excel Logo" class="excel-logo">
+                            </div>
+                            <h3>Carica il tuo file Excel</h3>
+                            <p>Trascina qui il file o clicca per selezionare</p>
+                            <input type="file" id="file-input" accept=".xlsx, .xls" hidden>
+                            <button class="upload-btn" id="select-file-btn">Seleziona File</button>
+                        </div>
+                        <div class="upload-progress">
+                            <div class="progress-bar">
+                                <div class="progress-bar-fill"></div>
+                            </div>
+                            <p class="progress-text">0%</p>
+                        </div>
+                    </div>
+                    <div class="file-info" id="file-info" style="display: none;">
+                        <div class="file-info-content">
+                            <div class="file-icon">
+                                <img src="logo.png" alt="Excel Logo" class="file-excel-logo">
+                            </div>
+                            <div class="file-details">
+                                <p>File selezionato: <span id="file-name"></span></p>
+                                <p class="file-size" id="file-size"></p>
+                            </div>
+                            <button class="remove-file" id="remove-file"><i class="fas fa-times"></i></button>
+                        </div>
+                        <button class="process-btn" id="process-btn">
+                            <i class="fas fa-cogs"></i> Elabora File
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="additional-values-section" style="display: none;">
+                <h2>Valori Aggiuntivi</h2>
+                <p>Aggiungi investimenti correnti non ancora liquidati</p>
+                <div class="value-association-container">
+                    <div class="input-group">
+                        <input type="text" id="additional-values" placeholder="Inserisci un valore (es: 10.50)">
+                        <button class="btn" id="add-values-btn">Aggiungi</button>
+                    </div>
+                    <div class="row-selection">
+                        <label for="associate-row">Associa a:</label>
+                        <select id="associate-row">
+                            <option disabled>-- Seleziona una riga dal riepilogo --</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="added-values-container"></div>
+            </section>
+
+            <section class="results-section" style="display: none;">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="summary">Riepilogo</button>
+                    <button class="tab-btn" data-tab="output-csv">Dettaglio Operazioni</button>
+                    <button class="tab-btn" data-tab="final-csv">Riepilogo Finale</button>
+                </div>
+
+                <div class="tab-content">
+                    <div class="tab-pane active" id="summary">
+                        <div class="summary-container">
+                            <h2>Riepilogo Ricavi al</h2>
+                            <div class="summary-cards">
+                                <div class="summary-card">
+                                    <h3>Ricavo Totale Trade</h3>
+                                    <p class="amount" id="total-trade">0,00 €</p>
+                                </div>
+                                <div class="summary-card">
+                                    <h3>Interessi Giacenza</h3>
+                                    <p class="amount" id="total-interest">0,00 €</p>
+                                </div>
+                                <div class="summary-card">
+                                    <h3>Saveback</h3>
+                                    <p class="amount" id="total-saveback">0,00 €</p>
+                                </div>
+                                <div class="summary-card highlight">
+                                    <h3>Ricavo Totale Complessivo</h3>
+                                    <p class="amount" id="total-comprehensive">0,00 €</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="output-csv">
+                        <div class="table-controls">
+                            <div class="search-container">
+                                <input type="text" id="output-search" placeholder="Cerca...">
+                                <button id="output-search-btn"><i class="fas fa-search"></i></button>
+                            </div>
+                            <button class="download-btn" id="download-output-csv">
+                                <i class="fas fa-download"></i> Scarica CSV
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table id="output-table">
+                                <thead>
+                                    <tr>
+                                        <th data-sort="data">DATA <i class="fas fa-sort"></i></th>
+                                        <th data-sort="tipo">TIPO <i class="fas fa-sort"></i></th>
+                                        <th data-sort="tipo-operazione">TIPO OPERAZIONE <i class="fas fa-sort"></i></th>
+                                        <th data-sort="descrizione">DESCRIZIONE <i class="fas fa-sort"></i></th>
+                                        <th data-sort="quantita">QUANTITÀ <i class="fas fa-sort"></i></th>
+                                        <th data-sort="prezzo-acquisto">PREZZO DI ACQUISTO <i class="fas fa-sort"></i></th>
+                                        <th data-sort="prezzo-vendita">PREZZO DI VENDITA <i class="fas fa-sort"></i></th>
+                                        <th data-sort="prezzo-unitario">PREZZO UNITARIO <i class="fas fa-sort"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- I dati verranno inseriti qui con JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="final-csv">
+                        <div class="table-controls">
+                            <div class="search-container">
+                                <input type="text" id="final-search" placeholder="Cerca...">
+                                <button id="final-search-btn"><i class="fas fa-search"></i></button>
+                            </div>
+                            <button class="download-btn" id="download-final-csv">
+                                <i class="fas fa-download"></i> Scarica CSV
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table id="final-table">
+                                <thead>
+                                    <tr>
+                                        <th data-sort="data-inizio">DATA PRIMO ACQUISTO <i class="fas fa-sort"></i></th>
+                                        <th data-sort="data-fine">DATA ULTIMA VENDITA <i class="fas fa-sort"></i></th>
+                                        <th data-sort="tipo-operazione">TIPO OPERAZIONE <i class="fas fa-sort"></i></th>
+                                        <th data-sort="descrizione">DESCRIZIONE <i class="fas fa-sort"></i></th>
+                                        <th data-sort="quantita">QUANTITÀ <i class="fas fa-sort"></i></th>
+                                        <th data-sort="prezzo-acquisto">PREZZO DI ACQUISTO <i class="fas fa-sort"></i></th>
+                                        <th data-sort="prezzo-vendita">PREZZO DI VENDITA <i class="fas fa-sort"></i></th>
+                                        <th data-sort="prezzo-unitario-acquisto">PREZZO UNITARIO ACQUISTO <i class="fas fa-sort"></i></th>
+                                        <th data-sort="prezzo-unitario-vendita">PREZZO UNITARIO VENDITA <i class="fas fa-sort"></i></th>
+                                        <th data-sort="ricavo">RICAVO <i class="fas fa-sort"></i></th>
+                                        <th data-sort="ricavo-percentuale">RICAVO % <i class="fas fa-sort"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- I dati verranno inseriti qui con JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Elaborazione in corso...</p>
+    </div>
+
+    <!-- Script esterni -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html> 
