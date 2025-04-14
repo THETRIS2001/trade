@@ -245,7 +245,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (rows && rows.length > 0) {
                 rows.forEach((row, index) => {
                     // Crea la descrizione della riga
-                    let rowDescription = `${row.TIPO_OPERAZIONE} - ${row.Descrizione || 'Senza descrizione'}`;
+                    let rowDescription;
+                    
+                    // Per Interessi Giacenza e Saveback, mostra solo il tipo senza aggiungere "- Senza descrizione"
+                    if ((row.TIPO_OPERAZIONE === 'Interessi Giacenza' || row.TIPO_OPERAZIONE === 'Saveback') && !row.Descrizione) {
+                        rowDescription = row.TIPO_OPERAZIONE;
+                    } else {
+                        rowDescription = `${row.TIPO_OPERAZIONE} - ${row.Descrizione || 'Senza descrizione'}`;
+                    }
                     
                     // Controlla se questa descrizione è già stata aggiunta
                     if (addedDescriptions.has(rowDescription)) {
@@ -431,6 +438,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.remove();
             }
         });
+        
+        // Ricalcola i totali dopo la rimozione del valore
+        calculateAndDisplayTotals();
     }
     
     // Setup delle tabelle e dei selettori di righe
@@ -1602,10 +1612,10 @@ function createFinalResult() {
             Descrizione: row.Descrizione,
             Quantita: row.Quantita,
             PREZZO_DI_ACQUISTO: row.PREZZO_DI_ACQUISTO,
-            PREZZO_DI_VENDITA: prezzoVendita,
+            PREZZO_DI_VENDITA: '',
             PREZZO_UNITARIO_ACQUISTO: '',
             PREZZO_UNITARIO_VENDITA: '',
-            RICAVO: '',
+            RICAVO: prezzoVendita,
             RICAVO_PERCENTUALE: ''
         });
     }
@@ -1649,10 +1659,10 @@ function createFinalResult() {
             Descrizione: row.Descrizione,
             Quantita: row.Quantita,
             PREZZO_DI_ACQUISTO: row.PREZZO_DI_ACQUISTO,
-            PREZZO_DI_VENDITA: prezzoVendita,
+            PREZZO_DI_VENDITA: '',
             PREZZO_UNITARIO_ACQUISTO: '',
             PREZZO_UNITARIO_VENDITA: '',
-            RICAVO: '',
+            RICAVO: prezzoVendita,
             RICAVO_PERCENTUALE: ''
         });
     }
@@ -1782,6 +1792,11 @@ function calculateAndDisplayTotals() {
     const totalSaveback = document.getElementById('total-saveback');
     const totalComprehensive = document.getElementById('total-comprehensive');
     
+    // Nuovi elementi per guadagni e perdite
+    const includeSavebackToggle = document.getElementById('include-saveback-toggle');
+    const totalProfits = document.getElementById('total-profits');
+    const totalLosses = document.getElementById('total-losses');
+    
     // Calcolo totale dei Trade (esclusi i Buy trade che sono quelli attualmente investiti)
     const datiTrade = createFinalResult().filter(row => row.TIPO_OPERAZIONE === 'Trade');
     
@@ -1792,6 +1807,10 @@ function calculateAndDisplayTotals() {
     
     // Variabile per tenere traccia dei valori aggiunti ai Buy trade
     let totaleValoriAggiuntiBuyTrade = 0;
+    
+    // Variabili per totale guadagni e perdite
+    let totaleGuadagni = 0;
+    let totalePerdite = 0;
     
     datiTrade.forEach(row => {
         // Estraggo i valori numerici (rimuovendo i simboli)
@@ -1808,6 +1827,13 @@ function calculateAndDisplayTotals() {
         totaleAcquisto += acquistoVal;
         totaleVendita += venditaVal;
         totaleRicavo += ricavoVal;
+        
+        // Separazione guadagni e perdite
+        if (ricavoVal > 0) {
+            totaleGuadagni += ricavoVal;
+        } else if (ricavoVal < 0) {
+            totalePerdite += ricavoVal;
+        }
     });
     
     // Controlla se ci sono valori aggiunti associati a Buy trade
@@ -1837,6 +1863,13 @@ function calculateAndDisplayTotals() {
                     }
                 }
             }
+            
+            // Aggiungi anche ai guadagni o perdite in base al segno
+            if (item.value > 0) {
+                totaleGuadagni += item.value;
+            } else if (item.value < 0) {
+                totalePerdite += item.value;
+            }
         });
     }
     
@@ -1849,17 +1882,17 @@ function calculateAndDisplayTotals() {
     
     // Estrai il valore degli interessi
     const rigaInteressi = createFinalResult().find(row => row.TIPO_OPERAZIONE === 'Interessi Giacenza');
-    if (rigaInteressi && rigaInteressi.PREZZO_DI_VENDITA) {
+    if (rigaInteressi && rigaInteressi.RICAVO) {
         // Rimuovo il simbolo € e converto in numero
-        const interessiStr = rigaInteressi.PREZZO_DI_VENDITA.replace('€', '').trim();
+        const interessiStr = rigaInteressi.RICAVO.replace('€', '').trim();
         interessiVal = convertNumber(interessiStr);
     }
     
     // Estrai il valore del saveback
     const rigaSaveback = createFinalResult().find(row => row.TIPO_OPERAZIONE === 'Saveback');
-    if (rigaSaveback && rigaSaveback.PREZZO_DI_VENDITA) {
+    if (rigaSaveback && rigaSaveback.RICAVO) {
         // Rimuovo il simbolo € e converto in numero
-        const savebackStr = rigaSaveback.PREZZO_DI_VENDITA.replace('€', '').trim();
+        const savebackStr = rigaSaveback.RICAVO.replace('€', '').trim();
         savebackVal = convertNumber(savebackStr);
     }
     
@@ -1881,6 +1914,32 @@ function calculateAndDisplayTotals() {
     // Per il totale complessivo, includiamo anche i valori aggiunti associati ai Buy trade
     const totalComprehensiveValue = ricavoTotaleComplessivo + totaleValoriAggiuntiBuyTrade;
     totalComprehensive.textContent = `${normalizeNumericFormat(Math.round(totalComprehensiveValue * 1000) / 1000, true)} €`;
+    
+    // Funzione per aggiornare i totali di guadagni e perdite
+    function updateProfitLoss() {
+        let guadagniFinali = totaleGuadagni;
+        
+        // Se il toggle è attivo, includi saveback e interessi giacenza nei guadagni
+        if (includeSavebackToggle.checked) {
+            guadagniFinali += interessiVal + savebackVal;
+        }
+        
+        // Aggiorna i valori visualizzati
+        totalProfits.textContent = `${normalizeNumericFormat(Math.round(guadagniFinali * 1000) / 1000, true)} €`;
+        totalLosses.textContent = `${normalizeNumericFormat(Math.round(totalePerdite * 1000) / 1000, true)} €`;
+    }
+    
+    // Rimuovi eventuali listener esistenti prima di aggiungerne uno nuovo
+    includeSavebackToggle.removeEventListener('change', window.updateProfitLossHandler);
+    
+    // Mantieni un riferimento alla funzione nel global scope per poterla rimuovere in futuro
+    window.updateProfitLossHandler = updateProfitLoss;
+    
+    // Aggiungi il nuovo listener
+    includeSavebackToggle.addEventListener('change', window.updateProfitLossHandler);
+    
+    // Esegui il calcolo iniziale
+    updateProfitLoss();
     
     // Applica le classi di colore in base ai valori
     
@@ -2576,106 +2635,56 @@ function handleHeaderClick(headers, table) {
 
 // Funzione per aggiungere un valore aggiuntivo alla tabella dettaglio operazioni
 function addValueToOutputTable(value, description) {
-    const tbody = document.querySelector('#output-table tbody');
-    const tr = document.createElement('tr');
+    const outputTable = document.getElementById('output-table');
+    if (!outputTable) return;
     
-    // Aggiungi la classe per evidenziare questa riga
-    tr.classList.add('added-value-row');
+    const tbody = outputTable.querySelector('tbody');
+    if (!tbody) return;
     
-    // Ottieni la data di oggi in formato DD/MM/YYYY
+    // Crea una nuova riga
+    const newRow = document.createElement('tr');
+    newRow.className = 'added-value-row'; // Aggiungi una classe per identificare le righe aggiunte
+    
+    // Data corrente
     const today = new Date();
-    const day = String(today.getDate()).padStart(2, '0');
-    const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-    const month = monthNames[today.getMonth()]; // Ottieni il nome del mese
-    const year = today.getFullYear().toString().slice(2); // Prendi solo le ultime 2 cifre
+    const formattedDate = formatDate(today);
     
-    // Formatta la data come "13 Apr 25"
-    const formattedDate = `${day} ${month} ${year}`;
-    
-    // Formatta il valore con la virgola come separatore decimale
-    const formattedValue = normalizeNumericFormat(value, true) + " €";
-    
-    // Inizializza quantità e prezzo unitario vuoti
-    let quantity = "";
-    let unitPrice = "";
-    
-    // Inizializza tipo e tipo operazione con i valori predefiniti
-    let tipoCell = "Commercio";
-    let tipoOperazioneCell = "Sell trade";
-    
-    // Controlla il tipo di valore aggiunto in base alla descrizione
-    const isBuyTrade = description.includes("Buy trade");
-    const isInteressi = description.includes("Interessi Giacenza");
-    const isSaveback = description.includes("Saveback");
-    
-    // Imposta i valori corretti in base al tipo
-    if (isInteressi) {
-        tipoCell = "Commercio";
-        tipoOperazioneCell = "Savings plan execution";
-    } else if (isSaveback) {
-        tipoCell = "Premio";
-        tipoOperazioneCell = "Your Saveback payment";
-    }
-    
-    // Solo se è un Buy trade, cerca la quantità nel riepilogo finale
-    if (isBuyTrade) {
-        const finalTable = document.querySelector('#final-table tbody');
-        const rows = finalTable.querySelectorAll('tr');
-        
-        // Estrai la parte della descrizione da confrontare (solo il testo dopo il primo trattino, senza lo spazio)
-        const descriptionParts = description.split(' - ');
-        let descToMatch = description;
-        
-        // Se la descrizione è nel formato "Tipo - Descrizione", prendiamo solo la Descrizione
-        if (descriptionParts.length > 1) {
-            descToMatch = descriptionParts.slice(1).join(' - '); // In caso ci siano più " - " nella descrizione
-        }
-        
-        // Cerca nel riepilogo finale la riga con la descrizione corrispondente
-        for (const row of rows) {
-            const descCell = row.querySelector('td:nth-child(2)');
-            if (descCell && descCell.textContent.trim() === descToMatch) {
-                const quantityCell = row.querySelector('td:nth-child(3)');
-                if (quantityCell) {
-                    quantity = quantityCell.textContent.trim();
-                    
-                    // Calcola il prezzo unitario
-                    const quantityNum = convertNumber(quantity.replace('azioni', '').trim());
-                    if (quantityNum > 0) {
-                        const unitPriceNum = value / quantityNum;
-                        unitPrice = normalizeNumericFormat(unitPriceNum, true) + " €/azione";
-                    }
-                    
-                    break;
-                }
-            }
-        }
-    }
-    
-    // Estrai la parte della descrizione da visualizzare
-    let displayDesc = description;
+    // Estrai il tipo di operazione dalla descrizione (formato: "TIPO - Descrizione")
     const descriptionParts = description.split(' - ');
-    if (descriptionParts.length > 1) {
-        displayDesc = descriptionParts.slice(1).join(' - '); // Prendi tutto dopo il primo "Tipo - "
+    const tipoOperazione = descriptionParts.length > 0 ? descriptionParts[0] : '';
+    const soloDescrizione = descriptionParts.length > 1 ? descriptionParts.slice(1).join(' - ') : '';
+    
+    // Crea le celle
+    const cells = [
+        formattedDate, // DATA
+        'IN ENTRATA', // TIPO (tutti i valori aggiunti sono IN ENTRATA)
+        tipoOperazione, // TIPO OPERAZIONE
+        soloDescrizione, // DESCRIZIONE
+        '', // QUANTITÀ (vuoto per i valori aggiunti)
+        '', // PREZZO DI ACQUISTO (vuoto per i valori aggiunti)
+        `${normalizeNumericFormat(value, true)} €`, // PREZZO DI VENDITA (il valore aggiunto)
+        '' // PREZZO UNITARIO (vuoto per i valori aggiunti)
+    ];
+    
+    // Popola la riga con le celle
+    cells.forEach(cellText => {
+        const cell = document.createElement('td');
+        cell.textContent = cellText;
+        newRow.appendChild(cell);
+    });
+    
+    // Aggiungi la riga alla tabella
+    tbody.appendChild(newRow);
+    
+    // Ricalcola i totali dopo aver aggiunto il nuovo valore
+    calculateAndDisplayTotals();
+    
+    // Formatta la data corrente per il formato "12 apr 24"
+    function formatDate(date) {
+        const day = date.getDate();
+        const monthNames = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+        const month = monthNames[date.getMonth()];
+        const year = date.getFullYear().toString().slice(-2);
+        return `${day} ${month} ${year}`;
     }
-    
-    // Crea celle per ogni colonna
-    tr.innerHTML = `
-        <td title="${formattedDate}">${formattedDate}</td>
-        <td title="${tipoCell}">${tipoCell}</td>
-        <td title="${tipoOperazioneCell}">${tipoOperazioneCell}</td>
-        <td title="${displayDesc}">${displayDesc}</td>
-        <td title="${quantity}">${quantity}</td>
-        <td title=""></td>
-        <td title="${formattedValue}">${formattedValue}</td>
-        <td title="${unitPrice}">${unitPrice}</td>
-    `;
-    
-    tbody.appendChild(tr);
-    
-    // Riordina la tabella dopo aver aggiunto la nuova riga
-    sortTable(document.getElementById('output-table'), 'data', false); // Imposta l'ordinamento decrescente
-    
-    // Aggiorna la data del riepilogo
-    updateSummaryDate();
 }
