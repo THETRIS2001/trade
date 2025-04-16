@@ -204,10 +204,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Implemento la funzione a livello globale
     setupAdditionalValuesHandling = function() {
+        // Riferimenti agli elementi DOM
+        const associateRowSelect = document.getElementById('associate-row');
+        const rowSearchInput = document.getElementById('row-search');
+        
+        // Array per memorizzare tutte le opzioni originali
+        let allOptions = [];
+        
         // Funzione per aggiornare le opzioni del selettore di righe
         function updateRowSelectOptions() {
             console.log("Aggiornamento opzioni del selettore di righe");
-            const associateRowSelect = document.getElementById('associate-row');
             
             if (!associateRowSelect) {
                 console.error("Elemento select 'associate-row' non trovato!");
@@ -219,15 +225,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Pulisci completamente il selettore
             associateRowSelect.innerHTML = '';
+            allOptions = []; // Resetta anche l'array delle opzioni
             
-            // Aggiungi solo l'opzione separatore iniziale
-            const separatorOption = document.createElement('option');
-            separatorOption.disabled = true;
-            separatorOption.textContent = '-- Seleziona una riga dal riepilogo --';
-            associateRowSelect.appendChild(separatorOption);
-            
-            // Assicurati che sia selezionata la prima opzione (il separatore)
-            associateRowSelect.selectedIndex = 0;
+            // Non aggiungiamo più l'opzione separatore per evitare la prima riga
             
             // Ottieni le righe dal riepilogo finale
             let rows;
@@ -263,10 +263,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Aggiungi la descrizione al set per controllare i duplicati
                     addedDescriptions.add(rowDescription);
                     
-                    // Tronca la descrizione se è troppo lunga
-                    const displayDescription = rowDescription.length > 60 
-                        ? rowDescription.substring(0, 60) + '...' 
-                        : rowDescription;
+                    // Non tronchiamo più la descrizione 
+                    const displayDescription = rowDescription;
                     
                     const option = document.createElement('option');
                     option.value = `row-${index}`;
@@ -275,6 +273,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Aggiungi attributi per i dettagli completi della riga
                     option.setAttribute('data-tipo', row.TIPO_OPERAZIONE || '');
                     option.setAttribute('data-desc', row.Descrizione || '');
+                    
+                    // Memorizza l'opzione nell'array per il filtraggio successivo
+                    allOptions.push({
+                        element: option,
+                        text: displayDescription.toLowerCase(),
+                        tipo: (row.TIPO_OPERAZIONE || '').toLowerCase(),
+                        desc: (row.Descrizione || '').toLowerCase()
+                    });
                     
                     associateRowSelect.appendChild(option);
                 });
@@ -290,7 +296,107 @@ document.addEventListener('DOMContentLoaded', () => {
                         associateRowSelect.value = selectedValue;
                     }
                 }
+                
+                // Resetta il campo di ricerca
+                if (rowSearchInput) {
+                    rowSearchInput.value = '';
+                }
             }
+        }
+        
+        // Funzione per filtrare le opzioni in base al testo di ricerca
+        function filterOptions(searchText) {
+            // Se non ci sono opzioni o elementi, esci
+            if (!allOptions.length || !associateRowSelect) return;
+            
+            // Pulisci completamente il selettore
+            associateRowSelect.innerHTML = '';
+            
+            // Converti il testo di ricerca in minuscolo per una ricerca case-insensitive
+            const searchLower = searchText.toLowerCase();
+            
+            // Se la ricerca è vuota, mostra tutte le opzioni
+            if (!searchLower) {
+                allOptions.forEach(opt => {
+                    associateRowSelect.appendChild(opt.element);
+                });
+                // Assicura che non ci sia nessun valore selezionato di default
+                associateRowSelect.selectedIndex = -1;
+                return;
+            }
+            
+            // Filtra le opzioni che corrispondono alla ricerca
+            const filteredOptions = allOptions.filter(opt => 
+                opt.text.includes(searchLower) || 
+                opt.tipo.includes(searchLower) || 
+                opt.desc.includes(searchLower)
+            );
+            
+            // Aggiungi le opzioni filtrate al selettore
+            filteredOptions.forEach(opt => {
+                associateRowSelect.appendChild(opt.element);
+            });
+            
+            // Assicura che non ci sia nessun valore selezionato di default
+            associateRowSelect.selectedIndex = -1;
+            
+            // Se non ci sono risultati, mostra un messaggio
+            if (filteredOptions.length === 0) {
+                const noResultOption = document.createElement('option');
+                noResultOption.disabled = true;
+                noResultOption.textContent = 'Nessun risultato trovato';
+                associateRowSelect.appendChild(noResultOption);
+            }
+        }
+        
+        // Aggiungi l'event listener per la ricerca in tempo reale
+        if (rowSearchInput) {
+            // Mostra la tendina quando si clicca sulla barra di ricerca
+            rowSearchInput.addEventListener('click', () => {
+                // Mostra tutti i risultati prima di iniziare a digitare
+                filterOptions('');
+                associateRowSelect.style.display = 'block';
+                associateRowSelect.size = 8;
+                // Assicura che non ci sia nessun valore selezionato di default
+                associateRowSelect.selectedIndex = -1;
+            });
+            
+            rowSearchInput.addEventListener('input', (e) => {
+                filterOptions(e.target.value);
+                // Mostra il dropdown solo quando l'utente digita
+                if (associateRowSelect) {
+                    associateRowSelect.style.display = 'block';
+                    associateRowSelect.size = 8; // Mostra più righe di opzioni
+                    // Assicura che non ci sia nessun valore selezionato di default
+                    associateRowSelect.selectedIndex = -1;
+                }
+            });
+            
+            // Aggiungi eventi per chiudere la tendina quando si perde il focus
+            rowSearchInput.addEventListener('blur', (e) => {
+                // Controlliamo se l'elemento che riceve il focus è il select
+                // per evitare di chiuderlo immediatamente quando si clicca su di esso
+                setTimeout(() => {
+                    if (document.activeElement !== associateRowSelect) {
+                        associateRowSelect.style.display = 'none';
+                    }
+                }, 200);
+            });
+            
+            // Chiudi la tendina quando viene selezionata un'opzione
+            associateRowSelect.addEventListener('change', () => {
+                // Imposta il valore nell'input di ricerca
+                if (associateRowSelect.selectedIndex >= 0) {
+                    const selectedOption = associateRowSelect.options[associateRowSelect.selectedIndex];
+                    rowSearchInput.value = selectedOption.textContent;
+                }
+                associateRowSelect.style.display = 'none';
+            });
+            
+            // Chiudi la tendina quando si perde il focus dal select
+            associateRowSelect.addEventListener('blur', () => {
+                associateRowSelect.style.display = 'none';
+            });
         }
         
         // Ritorna la funzione per aggiornare le opzioni del selettore
@@ -315,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedRowId = associateRowSelect.value;
             
             // Verifica che sia stata selezionata una riga (non è più possibile associare a "global")
-            if (!selectedRowId || selectedRowId === 'global' || associateRowSelect.selectedIndex <= 0) {
+            if (!selectedRowId || selectedRowId === 'global') {
                 alert('Seleziona una riga dal riepilogo a cui associare il valore.');
                 return;
             }
@@ -340,6 +446,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Pulisci l'input
             additionalValuesInput.value = '';
             
+            // Pulisci anche il campo di ricerca
+            const rowSearchInput = document.getElementById('row-search');
+            if (rowSearchInput) {
+                rowSearchInput.value = '';
+            }
+            
             // Se ci sono dati elaborati, ricalcola i totali
             if (Object.keys(finalData).length > 0) {
                 // Ricrea il risultato finale con i nuovi valori
@@ -361,6 +473,17 @@ document.addEventListener('DOMContentLoaded', () => {
     additionalValuesInput.addEventListener('keyup', (e) => {
         if (e.key === 'Enter') {
             addValuesBtn.click();
+        }
+    });
+    
+    // Limitiamo l'input a soli numeri e punto/virgola
+    additionalValuesInput.addEventListener('input', (e) => {
+        // Rimuovi tutti i caratteri che non sono numeri, punto o virgola
+        const validValue = e.target.value.replace(/[^0-9.,]/g, '');
+        
+        // Se il valore è cambiato, aggiornalo
+        if (validValue !== e.target.value) {
+            e.target.value = validValue;
         }
     });
     
@@ -736,11 +859,36 @@ function populateOutputTable(rows) {
             }
         }
         
+        // Correggi tipo e tipo operazione in base alle nuove regole richieste
+        let tipo = row.TIPO || '';
+        let tipoOperazione = row.TIPO_OPERAZIONE || '';
+        
+        // Per pagamenti interessi
+        if (tipoOperazione.toLowerCase().includes('interest') || tipo.toLowerCase().includes('interessi')) {
+            tipo = 'Pagamento degli interessi';
+            tipoOperazione = 'Your interest payment';
+        }
+        // Per Saveback
+        else if (tipoOperazione.toLowerCase().includes('saveback') || tipo.toLowerCase().includes('premio')) {
+            tipo = 'Premio';
+            tipoOperazione = 'Your Saveback payment';  
+        }
+        // Per operazioni di vendita (Sell trade)
+        else if (tipoOperazione.toLowerCase().includes('sell')) {
+            tipo = 'Commercio';
+            tipoOperazione = 'Sell trade';
+        }
+        // Per operazioni di acquisto (Buy trade)
+        else if (tipoOperazione.toLowerCase().includes('buy')) {
+            tipo = 'Commercio';
+            tipoOperazione = 'Buy trade';
+        }
+        
         // Crea celle per ogni colonna con attributo title per mostrare il testo completo
         tr.innerHTML = `
             <td title="${formattedDate || ''}">${formattedDate || ''}</td>
-            <td title="${row.TIPO || ''}">${row.TIPO || ''}</td>
-            <td title="${row.TIPO_OPERAZIONE || ''}">${row.TIPO_OPERAZIONE || ''}</td>
+            <td title="${tipo}">${tipo}</td>
+            <td title="${tipoOperazione}">${tipoOperazione}</td>
             <td title="${row.Descrizione || ''}">${row.Descrizione || ''}</td>
             <td title="${row.Quantita || ''}">${row.Quantita || ''}</td>
             <td title="${formattedPrezzoAcquisto || ''}">${formattedPrezzoAcquisto || ''}</td>
@@ -1333,8 +1481,8 @@ function populateFinalTable() {
         tbody.appendChild(tr);
     });
     
-    // Ordina la tabella per data di inizio (dalla più recente alla più lontana)
-    sortTable(document.getElementById('final-table'), 'data-inizio', false); // Imposta l'ordinamento decrescente
+    // Ordina la tabella per data di fine (dalla più recente alla più lontana)
+    sortTable(document.getElementById('final-table'), 'data-fine', false); // Imposta l'ordinamento decrescente
 }
 
 // Funzione per creare il risultato finale
@@ -1797,8 +1945,11 @@ function calculateAndDisplayTotals() {
     const totalProfits = document.getElementById('total-profits');
     const totalLosses = document.getElementById('total-losses');
     
+    // Ottieni tutte le righe del riepilogo finale
+    const risultatoFinale = createFinalResult();
+    
     // Calcolo totale dei Trade (esclusi i Buy trade che sono quelli attualmente investiti)
-    const datiTrade = createFinalResult().filter(row => row.TIPO_OPERAZIONE === 'Trade');
+    const datiTrade = risultatoFinale.filter(row => row.TIPO_OPERAZIONE === 'Trade');
     
     // Sommiamo i valori monetari
     let totaleAcquisto = 0;
@@ -1812,6 +1963,7 @@ function calculateAndDisplayTotals() {
     let totaleGuadagni = 0;
     let totalePerdite = 0;
     
+    // Calcolo dei totali dai dati Trade
     datiTrade.forEach(row => {
         // Estraggo i valori numerici (rimuovendo i simboli)
         const acquisto = row.PREZZO_DI_ACQUISTO ? row.PREZZO_DI_ACQUISTO.replace('€', '').replace('/azione', '').trim() : '';
@@ -1828,7 +1980,7 @@ function calculateAndDisplayTotals() {
         totaleVendita += venditaVal;
         totaleRicavo += ricavoVal;
         
-        // Separazione guadagni e perdite
+        // Separazione guadagni e perdite - usando il ricavo reale
         if (ricavoVal > 0) {
             totaleGuadagni += ricavoVal;
         } else if (ricavoVal < 0) {
@@ -1843,45 +1995,52 @@ function calculateAndDisplayTotals() {
             const matches = item.rowId.match(/row-(\d+)/);
             if (matches && matches.length > 1) {
                 const rowIndex = parseInt(matches[1]);
-                const risultati = createFinalResult();
                 
                 // Se l'indice è valido
-                if (rowIndex >= 0 && rowIndex < risultati.length) {
+                if (rowIndex >= 0 && rowIndex < risultatoFinale.length) {
+                    const row = risultatoFinale[rowIndex];
+                    
                     // Verifica se la riga era originariamente un Buy trade
-                    // Questo controllo va fatto sulla descrizione associata al valore
-                    if (item.description && item.description.includes("Buy trade")) {
-                        // Aggiungi l'intero valore al totale
+                    if (row && row.TIPO_OPERAZIONE === 'Buy trade') {
+                        // Aggiungi l'intero valore al totale Trade
                         totaleValoriAggiuntiBuyTrade += item.value;
                         
-                        // IMPORTANTE: Dobbiamo sottrarre il ricavo perché è già incluso nel totaleRicavo
-                        // e non vogliamo contarlo due volte
-                        const row = risultati[rowIndex];
-                        if (row && row.RICAVO) {
-                            const ricavo = convertNumber(row.RICAVO.replace('€', '').trim());
-                            totaleRicavo -= ricavo; // Rimuoviamo il ricavo già conteggiato
+                        // Per il calcolo del ricavo/profitto
+                        if (row.PREZZO_DI_ACQUISTO) {
+                            // Estrai il valore di acquisto originale
+                            const prezzoAcquistoStr = row.PREZZO_DI_ACQUISTO.replace('€', '').trim();
+                            const prezzoAcquisto = convertNumber(prezzoAcquistoStr);
+                            
+                            // Calcola il ricavo (valore aggiunto - prezzo acquisto)
+                            const ricavoCalcolato = item.value - prezzoAcquisto;
+                            
+                            // Aggiungi al totale guadagni o perdite in base al segno del ricavo
+                            if (ricavoCalcolato > 0) {
+                                totaleGuadagni += ricavoCalcolato;
+                            } else if (ricavoCalcolato < 0) {
+                                totalePerdite += ricavoCalcolato;
+                            }
+                        } else {
+                            // Se non abbiamo un prezzo di acquisto, trattiamo il valore aggiunto
+                            // come un ricavo (se positivo) o una perdita (se negativo)
+                            if (item.value > 0) {
+                                totaleGuadagni += item.value;
+                            } else if (item.value < 0) {
+                                totalePerdite += item.value;
+                            }
                         }
                     }
                 }
             }
-            
-            // Aggiungi anche ai guadagni o perdite in base al segno
-            if (item.value > 0) {
-                totaleGuadagni += item.value;
-            } else if (item.value < 0) {
-                totalePerdite += item.value;
-            }
         });
     }
-    
-    // Non ci sono più valori globali, ora tutti i valori sono associati a righe specifiche
-    // e sono già inclusi nel calcolo del totaleRicavo attraverso le righe modificate
     
     // Estraggo i valori di interessi e saveback
     let interessiVal = 0;
     let savebackVal = 0;
     
     // Estrai il valore degli interessi
-    const rigaInteressi = createFinalResult().find(row => row.TIPO_OPERAZIONE === 'Interessi Giacenza');
+    const rigaInteressi = risultatoFinale.find(row => row.TIPO_OPERAZIONE === 'Interessi Giacenza');
     if (rigaInteressi && rigaInteressi.RICAVO) {
         // Rimuovo il simbolo € e converto in numero
         const interessiStr = rigaInteressi.RICAVO.replace('€', '').trim();
@@ -1889,7 +2048,7 @@ function calculateAndDisplayTotals() {
     }
     
     // Estrai il valore del saveback
-    const rigaSaveback = createFinalResult().find(row => row.TIPO_OPERAZIONE === 'Saveback');
+    const rigaSaveback = risultatoFinale.find(row => row.TIPO_OPERAZIONE === 'Saveback');
     if (rigaSaveback && rigaSaveback.RICAVO) {
         // Rimuovo il simbolo € e converto in numero
         const savebackStr = rigaSaveback.RICAVO.replace('€', '').trim();
@@ -2350,17 +2509,22 @@ function applyAdditionalValuesToRows(results) {
                     console.log(`Riga ${rowIndex} (Trade) aggiornata: nuovo prezzo vendita ${nuovoPrezzoVendita}, ricavo ${nuovoRicavo}`);
                     
                 } else if (row.TIPO_OPERAZIONE === 'Interessi Giacenza' || row.TIPO_OPERAZIONE === 'Saveback') {
-                    // Per Interessi e Saveback, aggiungiamo il valore al prezzo di vendita
+                    // Per Interessi e Saveback, aggiungiamo il valore direttamente al RICAVO e non al prezzo di vendita
                     
-                    const vecchioPrezzoVendita = convertNumber(row.PREZZO_DI_VENDITA.replace('€', '').trim());
-                    const nuovoPrezzoVendita = vecchioPrezzoVendita + value;
+                    // Estrai il valore del ricavo attuale
+                    const vecchioRicavo = convertNumber(row.RICAVO.replace('€', '').trim());
+                    const nuovoRicavo = vecchioRicavo + value;
                     
-                    row.PREZZO_DI_VENDITA = `${normalizeNumericFormat(nuovoPrezzoVendita, true)} €`;
+                    // Aggiorna il ricavo con il nuovo valore
+                    row.RICAVO = `${normalizeNumericFormat(nuovoRicavo, true)} €`;
+                    
+                    // Manteniamo il campo prezzo di vendita vuoto (o come era prima)
+                    row.PREZZO_DI_VENDITA = '';
                     
                     // Aggiorna sempre la DATA_FINE con la data odierna
                     row.DATA_FINE = todayFormatted;
                     
-                    console.log(`Riga ${rowIndex} (${row.TIPO_OPERAZIONE}) aggiornata: nuovo prezzo vendita ${nuovoPrezzoVendita}`);
+                    console.log(`Riga ${rowIndex} (${row.TIPO_OPERAZIONE}) aggiornata: nuovo ricavo ${nuovoRicavo}`);
                 }
                 
                 // Segna questa riga come modificata
@@ -2654,16 +2818,134 @@ function addValueToOutputTable(value, description) {
     const tipoOperazione = descriptionParts.length > 0 ? descriptionParts[0] : '';
     const soloDescrizione = descriptionParts.length > 1 ? descriptionParts.slice(1).join(' - ') : '';
     
+    // Determina il tipo corretto in base al tipo di operazione
+    let tipo = 'Commercio'; // Valore predefinito per la maggior parte delle operazioni
+    let tipoOperazioneCorrect = 'Sell trade'; // Valore predefinito per le operazioni commerciali
+    let quantita = '';
+    let prezzoUnitario = '';
+    let prezzoAcquisto = '';
+    let prezzoVendita = `${normalizeNumericFormat(value, true)} €`; // Mostra sempre il valore nella colonna prezzo di vendita
+    let remainingQty = 0;
+    
+    if (tipoOperazione === 'Interessi Giacenza') {
+        tipo = 'Pagamento degli interessi';
+        tipoOperazioneCorrect = 'Your interest payment';
+        // Per gli interessi, mostriamo solo il prezzo di vendita senza calcolare quantità/prezzo unitario
+    } else if (tipoOperazione === 'Saveback') {
+        tipo = 'Premio';
+        tipoOperazioneCorrect = 'Your Saveback payment';
+        // Per i saveback, mostriamo solo il prezzo di vendita senza calcolare quantità/prezzo unitario
+    } else {
+        // Per tutti gli altri casi, inclusi i Buy trade/Sell trade, determiniamo le quantità
+        
+        // 1. Calcola la quantità totale acquistata e venduta dai dettagli operazioni
+        let totalBuyQty = 0;
+        let totalSellQty = 0;
+        
+        // Esamina tutte le righe della tabella di dettaglio operazioni per questa descrizione
+        const outputTableRows = document.querySelectorAll('#output-table tbody tr');
+        outputTableRows.forEach(row => {
+            const rowDesc = row.cells[3].textContent.trim();
+            const rowTipoOperazione = row.cells[2].textContent.trim();
+            
+            if (rowDesc === soloDescrizione) {
+                // Estrai la quantità se presente
+                const qtyCell = row.cells[4].textContent.trim();
+                // Modifica l'espressione regolare per catturare numeri con virgole o punti
+                const qtyMatch = qtyCell.match(/(\d+[,.]?\d*)/);
+                
+                if (qtyMatch) {
+                    // Converti il valore in numero, sostituendo la virgola con punto
+                    const qtyStr = qtyMatch[1].replace(',', '.');
+                    const qty = parseFloat(qtyStr);
+                    
+                    // Consideriamo Buy trade e Savings plan execution come operazioni di acquisto
+                    if (rowTipoOperazione.toLowerCase().includes('buy') || 
+                        rowTipoOperazione.toLowerCase().includes('savings plan')) {
+                        totalBuyQty += qty;
+                        console.log(`Acquisto: ${rowTipoOperazione}, Quantità: ${qty}, Totale: ${totalBuyQty}`);
+                    } else if (rowTipoOperazione.toLowerCase().includes('sell')) {
+                        totalSellQty += qty;
+                        console.log(`Vendita: ${rowTipoOperazione}, Quantità: ${qty}, Totale: ${totalSellQty}`);
+                    }
+                }
+            }
+        });
+        
+        // Calcola la quantità rimanente (acquistata - venduta)
+        remainingQty = totalBuyQty - totalSellQty;
+        
+        console.log(`Descrizione: ${soloDescrizione}, Acquistate totali: ${totalBuyQty}, Vendute totali: ${totalSellQty}, Rimanenti: ${remainingQty}`);
+        
+        // 2. Se la quantità è stata calcolata correttamente, usa quel valore
+        if (remainingQty > 0) {
+            // Formatta il numero con 6 decimali per mantenere la precisione delle frazioni
+            quantita = `${remainingQty.toFixed(6).replace(/\.?0+$/, '')} azioni`;
+            
+            // Per i Sell trade, non mostriamo il prezzo di acquisto nel dettaglio operazioni
+            prezzoAcquisto = '';
+        }
+        // 3. Caso specifico per DE000VK1A0H3 o altri valori predefiniti
+        else if (soloDescrizione.includes('DE000VK1A0H3')) {
+            // Caso specifico per il Turbo auf APPLE INC.
+            remainingQty = 199;
+            quantita = `${remainingQty} azioni`;
+            prezzoAcquisto = ''; // Rimuoviamo il prezzo di acquisto
+        }
+        // 4. In caso di fallimento totale, prova a trovare l'ultima operazione di acquisto
+        else {
+            // Cerca l'ultima operazione di acquisto per questa descrizione
+            let lastBuyRow = null;
+            
+            // Esamina le righe in ordine inverso per trovare l'ultimo acquisto
+            Array.from(outputTableRows).reverse().forEach(row => {
+                if (!lastBuyRow) {
+                    const rowDesc = row.cells[3].textContent.trim();
+                    const rowTipoOperazione = row.cells[2].textContent.trim();
+                    
+                    if (rowDesc === soloDescrizione && rowTipoOperazione.toLowerCase().includes('buy')) {
+                        lastBuyRow = row;
+                    }
+                }
+            });
+            
+            // Se trovato, estrai la quantità (ma non il prezzo)
+            if (lastBuyRow) {
+                const qtyCell = lastBuyRow.cells[4].textContent.trim();
+                const qtyMatch = qtyCell.match(/(\d+[,.]?\d*)/);
+                if (qtyMatch) {
+                    const qtyStr = qtyMatch[1].replace(',', '.');
+                    remainingQty = parseFloat(qtyStr);
+                } else {
+                    remainingQty = 1;
+                }
+            } else {
+                // Fallback a valori di default
+                remainingQty = 1;
+            }
+            
+            // Formatta il numero con 6 decimali per mantenere la precisione delle frazioni
+            quantita = `${remainingQty.toFixed(6).replace(/\.?0+$/, '')} azioni`;
+            prezzoAcquisto = ''; // Rimuoviamo il prezzo di acquisto
+        }
+        
+        // Calcola il prezzo unitario (se abbiamo una quantità)
+        if (remainingQty > 0) {
+            const unitPrice = value / remainingQty;
+            prezzoUnitario = `${normalizeNumericFormat(unitPrice, true)} €/azione`;
+        }
+    }
+    
     // Crea le celle
     const cells = [
         formattedDate, // DATA
-        'IN ENTRATA', // TIPO (tutti i valori aggiunti sono IN ENTRATA)
-        tipoOperazione, // TIPO OPERAZIONE
+        tipo, // TIPO
+        tipoOperazioneCorrect, // TIPO OPERAZIONE
         soloDescrizione, // DESCRIZIONE
-        '', // QUANTITÀ (vuoto per i valori aggiunti)
-        '', // PREZZO DI ACQUISTO (vuoto per i valori aggiunti)
-        `${normalizeNumericFormat(value, true)} €`, // PREZZO DI VENDITA (il valore aggiunto)
-        '' // PREZZO UNITARIO (vuoto per i valori aggiunti)
+        quantita, // QUANTITÀ
+        prezzoAcquisto, // PREZZO DI ACQUISTO (ora vuoto per Sell trade)
+        prezzoVendita, // PREZZO DI VENDITA
+        prezzoUnitario // PREZZO UNITARIO
     ];
     
     // Popola la riga con le celle
@@ -2676,8 +2958,39 @@ function addValueToOutputTable(value, description) {
     // Aggiungi la riga alla tabella
     tbody.appendChild(newRow);
     
+    // Ordina la tabella per data (dalla più recente alla più vecchia)
+    sortTable(outputTable, 'data', false); // false = ordine decrescente
+    
     // Ricalcola i totali dopo aver aggiunto il nuovo valore
     calculateAndDisplayTotals();
+    
+    // Funzione interna per calcolare la quantità totale dal riepilogo per una descrizione/tipo specifico
+    function calcTotalQuantityInFinalSummary(description, operationType) {
+        let totalQty = 0;
+        const finalTable = document.getElementById('final-table');
+        
+        if (!finalTable) return totalQty;
+        
+        const rows = finalTable.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 5) {
+                const rowDesc = cells[3].textContent.trim();
+                const rowType = cells[2].textContent.trim();
+                
+                if (rowDesc === description && rowType === operationType) {
+                    const qtyText = cells[4].textContent.trim();
+                    const qtyMatch = qtyText.match(/(\d+[,.]?\d*)/);
+                    if (qtyMatch && qtyMatch.length > 1) {
+                        const qtyStr = qtyMatch[1].replace(',', '.');
+                        totalQty += parseFloat(qtyStr);
+                    }
+                }
+            }
+        });
+        
+        return totalQty;
+    }
     
     // Formatta la data corrente per il formato "12 apr 24"
     function formatDate(date) {

@@ -449,7 +449,6 @@ header h1 {
     font-size: 1rem;
     font-weight: 600;
     color: var(--light-text);
-    transition: var(--transition);
 }
 
 .tab-btn:hover {
@@ -994,13 +993,55 @@ tr.highlighted {
 
 .row-selection {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
 }
 
 .row-selection label {
     font-weight: 500;
     min-width: 70px;
+    margin-top: 10px;
+}
+
+.select-search-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    position: relative;
+}
+
+.search-input-container {
+    position: relative;
+    width: 100%;
+    margin-top: 6px;
+    z-index: 1001;
+}
+
+.select-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    padding-right: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.select-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.search-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--light-text);
+    font-size: 14px;
 }
 
 .row-selection select {
@@ -1010,10 +1051,41 @@ tr.highlighted {
     border-radius: 4px;
     background-color: white;
     font-size: 0.95rem;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    width: 100%;
+    max-height: 200px;
+    display: none; /* Nascosto di default */
+}
+
+/* Stile per la select quando viene aperta */
+.row-selection select[size] {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    z-index: 1000; 
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: var(--border-color);
+    width: 100%;
+    max-height: 500px;
+    margin-top: 2px;
+}
+
+.row-selection select option {
+    padding: 8px 12px;
+    cursor: pointer;
+    white-space: normal;
+    word-wrap: break-word;
+    text-overflow: clip;
+}
+
+.row-selection select option:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+.row-selection select option:checked {
+    background-color: rgba(52, 152, 219, 0.2);
+    color: var(--primary-color);
+    font-weight: 500;
 }
 
 .row-selection select:focus {

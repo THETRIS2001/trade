@@ -58,14 +58,19 @@
                 <p>Aggiungi investimenti correnti non ancora liquidati</p>
                 <div class="value-association-container">
                     <div class="input-group">
-                        <input type="text" id="additional-values" placeholder="Inserisci un valore (es: 10.50)">
+                        <input type="text" inputmode="decimal" id="additional-values" placeholder="Inserisci un valore (es: 10.50)">
                         <button class="btn" id="add-values-btn">Aggiungi</button>
                     </div>
                     <div class="row-selection">
-                        <label for="associate-row">Associa a:</label>
-                        <select id="associate-row">
-                            <option disabled>-- Seleziona una riga dal riepilogo --</option>
-                        </select>
+                        <label for="row-search">Associa a:</label>
+                        <div class="select-search-container">
+                            <div class="search-input-container">
+                                <input type="text" id="row-search" placeholder="Cerca..." class="select-search-input">
+                                <i class="fas fa-search search-icon"></i>
+                            </div>
+                            <select id="associate-row" style="display:none;">
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div id="added-values-container"></div>
