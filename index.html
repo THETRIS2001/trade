@@ -54,75 +54,176 @@
             </section>
 
             <section class="additional-values-section" style="display: none;">
-                <h2>Valori Aggiuntivi</h2>
-                <p>Aggiungi investimenti correnti non ancora liquidati</p>
-                <div class="value-association-container">
-                    <div class="input-group">
-                        <input type="text" inputmode="decimal" id="additional-values" placeholder="Inserisci un valore (es: 10.50)">
-                        <button class="btn" id="add-values-btn">Aggiungi</button>
+                <div class="section-header">
+                    <div class="section-icon">
+                        <i class="fas fa-plus-circle"></i>
                     </div>
-                    <div class="row-selection">
-                        <label for="row-search">Associa a:</label>
-                        <div class="select-search-container">
-                            <div class="search-input-container">
-                                <input type="text" id="row-search" placeholder="Cerca..." class="select-search-input">
-                                <i class="fas fa-search search-icon"></i>
-                            </div>
-                            <select id="associate-row" style="display:none;">
-                            </select>
-                        </div>
+                    <div class="section-title">
+                        <h2>Valori Aggiuntivi</h2>
+                        <p>Aggiungi investimenti correnti non ancora liquidati</p>
                     </div>
                 </div>
-                <div id="added-values-container"></div>
+                
+                <div class="value-association-container">
+                    <div class="card-input-container">
+                        <div class="input-group">
+                            <div class="input-icon-wrapper">
+                                <i class="fas fa-euro-sign"></i>
+                                <input type="text" inputmode="decimal" id="additional-values" placeholder="Inserisci un valore (es: 10.50)">
+                            </div>
+                            <button class="btn" id="add-values-btn">
+                                <i class="fas fa-plus"></i> Aggiungi
+                            </button>
+                        </div>
+                        <div class="row-selection">
+                            <label for="row-search">Associa a:</label>
+                            <div class="select-search-container">
+                                <div class="search-input-container">
+                                    <input type="text" id="row-search" placeholder="Cerca..." class="select-search-input">
+                                    <i class="fas fa-search search-icon"></i>
+                                </div>
+                                <select id="associate-row" style="display:none;">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="values-display-container">
+                        <h3>Valori aggiunti</h3>
+                        <div id="added-values-container"></div>
+                    </div>
+                </div>
             </section>
 
             <section class="results-section" style="display: none;">
                 <div class="tabs">
-                    <button class="tab-btn active" data-tab="summary">Riepilogo</button>
-                    <button class="tab-btn" data-tab="output-csv">Dettaglio Operazioni</button>
-                    <button class="tab-btn" data-tab="final-csv">Riepilogo Finale</button>
+                    <button class="tab-btn active" data-tab="summary">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Riepilogo</span>
+                    </button>
+                    <button class="tab-btn" data-tab="output-csv">
+                        <i class="fas fa-list-ul"></i>
+                        <span>Dettaglio Operazioni</span>
+                    </button>
+                    <button class="tab-btn" data-tab="final-csv">
+                        <i class="fas fa-table"></i>
+                        <span>Riepilogo Finale</span>
+                    </button>
+                    <button class="tab-btn" data-tab="metrics-explanation">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Spiegazione</span>
+                    </button>
                 </div>
 
                 <div class="tab-content">
                     <div class="tab-pane active" id="summary">
                         <div class="summary-container">
                             <h2>Riepilogo Ricavi al</h2>
-                            <div class="summary-cards">
-                                <div class="summary-card">
-                                    <h3>Ricavo Totale Trade</h3>
-                                    <p class="amount" id="total-trade">0,00 €</p>
-                                </div>
-                                <div class="summary-card">
-                                    <h3>Interessi Giacenza</h3>
-                                    <p class="amount" id="total-interest">0,00 €</p>
-                                </div>
-                                <div class="summary-card">
-                                    <h3>Saveback</h3>
-                                    <p class="amount" id="total-saveback">0,00 €</p>
-                                </div>
-                                <div class="summary-card highlight">
-                                    <h3>Ricavo Totale Complessivo</h3>
-                                    <p class="amount" id="total-comprehensive">0,00 €</p>
-                                </div>
-                            </div>
                             
-                            <!-- Nuova sezione per Guadagni e Perdite -->
-                            <div class="profit-loss-container">
-                                <div class="toggle-container">
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="include-saveback-toggle">
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                    <span class="toggle-label">Includi Saveback e Giacenza nei Guadagni</span>
-                                </div>
-                                <div class="profit-loss-cards">
-                                    <div class="profit-loss-card profit">
+                            <!-- Nuova struttura unificata del riepilogo -->
+                            <div class="summary-cards">
+                                <!-- Prima riga: Guadagni + Perdite = Ricavo Totale Trade -->
+                                <div class="summary-card profit" id="profits-card">
+                                    <div class="card-icon">
+                                        <i class="fas fa-arrow-up"></i>
+                                    </div>
+                                    <div class="card-content">
                                         <h3>Totale Guadagni</h3>
                                         <p class="amount" id="total-profits">0,00 €</p>
                                     </div>
-                                    <div class="profit-loss-card loss">
+                                </div>
+                                
+                                <!-- Simbolo - (al posto di +) -->
+                                <div class="math-symbol">
+                                    <div class="math-icon">
+                                        <i class="fas fa-minus"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="summary-card loss" id="losses-card">
+                                    <div class="card-icon">
+                                        <i class="fas fa-arrow-down"></i>
+                                    </div>
+                                    <div class="card-content">
                                         <h3>Totale Perdite</h3>
                                         <p class="amount" id="total-losses">0,00 €</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Simbolo = -->
+                                <div class="math-symbol">
+                                    <div class="math-icon">
+                                        <i class="fas fa-equals"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Card per Ricavo Totale Trade -->
+                                <div class="summary-card" id="trade-card">
+                                    <div class="card-icon">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="card-content">
+                                        <h3>Ricavo Totale Trade</h3>
+                                        <p class="amount" id="total-trade">0,00 €</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Seconda riga: Ricavo Totale Trade + (Interessi/Saveback) = Ricavo Totale Complessivo -->
+                            <div class="summary-cards second-row">
+                                <!-- Card per Ricavo Totale Trade (ripetuta) con Saveback integrato -->
+                                <div class="summary-card" id="trade-card-copy">
+                                    <div class="card-icon">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="card-content">
+                                        <h3>Ricavo Totale Trade</h3>
+                                        <p class="amount trade-copy">0,00 €</p>
+                                        <div class="saveback-container">
+                                            <div class="saveback-icon">
+                                                <i class="fas fa-undo-alt"></i>
+                                            </div>
+                                            <div class="saveback-content">
+                                                <h4>Include Saveback</h4>
+                                                <p class="saveback-amount" id="total-saveback">0,00 €</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Simbolo + -->
+                                <div class="math-symbol">
+                                    <div class="math-icon">
+                                        <i class="fas fa-plus"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Card per Interessi Giacenza -->
+                                <div class="summary-card" id="interest-card">
+                                    <div class="card-icon">
+                                        <i class="fas fa-piggy-bank"></i>
+                                    </div>
+                                    <div class="card-content">
+                                        <h3>Interessi Giacenza</h3>
+                                        <p class="amount" id="total-interest">0,00 €</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Simbolo = -->
+                                <div class="math-symbol">
+                                    <div class="math-icon">
+                                        <i class="fas fa-equals"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Card per Ricavo Totale Complessivo -->
+                                <div class="summary-card highlight" id="comprehensive-card">
+                                    <div class="card-icon">
+                                        <i class="fas fa-wallet"></i>
+                                    </div>
+                                    <div class="card-content">
+                                        <h3>Ricavo Totale Complessivo</h3>
+                                        <p class="amount" id="total-comprehensive">0,00 €</p>
                                     </div>
                                 </div>
                             </div>
@@ -191,6 +292,151 @@
                                     <!-- I dati verranno inseriti qui con JavaScript -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Nuova tab per la spiegazione -->
+                    <div id="metrics-explanation" class="tab-pane">
+                        <div class="explanation-container">
+                            <h2>Spiegazione delle Metriche</h2>
+                            
+                            <div class="explanation-section">
+                                <h3><i class="fas fa-calculator"></i> Calcoli Principali</h3>
+                                <div class="explanation-card">
+                                    <h4>Bilancio Totale (considerando posizioni aperte a 0)</h4>
+                                    <div class="formula-container">
+                                        <div class="formula">
+                                            <span class="formula-part">Bilancio Totale</span>
+                                            <span class="formula-operator">=</span>
+                                            <span class="formula-part">Somma (PREZZO DI VENDITA)</span>
+                                            <span class="formula-operator">-</span>
+                                            <span class="formula-part">Somma (PREZZO DI ACQUISTO)</span>
+                                        </div>
+                                    </div>
+                                    <p>
+                                        Questo calcolo equivale a sottrarre le spese totali per gli acquisti alle entrate totali di vendita. 
+                                        Rappresenta quanto avresti guadagnato/perso considerando gli investimenti ancora aperti come venduti a 0€.
+                                    </p>
+                                    <p class="note">
+                                        <i class="fas fa-info-circle"></i> I valori di queste colonne sono gli stessi sia nel dettaglio operazioni che nel riepilogo finale. In entrambi i casi sto contando il saveback (e non dovrei) e anche la giacenza, trovandosi questi nella colonna PREZZO DI VENDITA.
+                                        Questa metrica nel sito NON è presente
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="explanation-section">
+                                <h3><i class="fas fa-chart-line"></i> Ricavi e Performance</h3>
+                                <div class="explanation-card">
+                                    <h4>Ricavo Totale Trade</h4>
+                                    <div class="formula-container">
+                                        <div class="formula">
+                                            <span class="formula-part">Ricavo Totale Trade</span>
+                                            <span class="formula-operator">=</span>
+                                            <span class="formula-part">Somma (RICAVO) delle operazioni di tipo Trade</span>
+                                        </div>
+                                    </div>
+                                    <p>
+                                        Rappresenta la somma di tutti i ricavi dalle operazioni di trading completate, escludendo gli interessi di giacenza (il saveback è già al suo interno invece).
+                                        Questo valore considera solo le operazioni effettivamente concluse.
+                                    </p>
+                                    <p class="note">
+                                        <i class="fas fa-info-circle"></i> Se inserisci valori anche per gli investimenti ancora aperti, questo calcolo diventa equivalente al "Bilancio Totale" descritto sopra a meno della giacenza e del saveback che qui non è contato (il saveback li viene proprio sommato quindi di fatto contato 2 volte).
+                                    </p>
+                                </div>
+                                
+                                <div class="explanation-card">
+                                    <h4>Ricavo Totale Complessivo</h4>
+                                    <div class="formula-container">
+                                        <div class="formula">
+                                            <span class="formula-part">Ricavo Totale Complessivo</span>
+                                            <span class="formula-operator">=</span>
+                                            <span class="formula-part">Ricavo Totale Trade</span>
+                                            <span class="formula-operator">+</span>
+                                            <span class="formula-part">Interessi Giacenza</span>
+                                        </div>
+                                    </div>
+                                    <p>
+                                        Include tutti i ricavi: quelli delle operazioni di trading completate (già comprensivi del Saveback), più gli interessi di giacenza.
+                                    </p>
+                                    <p>
+                                        Gli Interessi di Giacenza sono l'unica fonte di reddito aggiuntiva che viene sommata al Ricavo Totale Trade per ottenere il Ricavo Totale Complessivo.
+                                    </p>
+                                    <p class="detail">
+                                        Questo calcolo, cosi come "Ricavo Totale Trade" considera i prodotti ancora da vendere come se fossero in pareggio (non come se avessero perso il 100% del valore). 
+                                        Gestisce correttamente le vendite parziali calcolando le azioni rimanenti da vendere in base agli acquisti effettuati.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="explanation-section">
+                                <h3><i class="fas fa-balance-scale"></i> Guadagni e Perdite</h3>
+                                <div class="explanation-card">
+                                    <h4>Totale Guadagni</h4>
+                                    <div class="formula-container">
+                                        <div class="formula">
+                                            <span class="formula-part">Totale Guadagni</span>
+                                            <span class="formula-operator">=</span>
+                                            <span class="formula-part">Somma di tutti i valori positivi della colonna RICAVO</span>
+                                        </div>
+                                    </div>
+                                    <p>
+                                        Rappresenta la somma di tutti i profitti realizzati dalle operazioni di trading concluse in profitto. NON tiene conto degli interessi di giacenza (il saveback invece è implicitamente al suo interno)
+                                    </p>
+                                </div>
+                                
+                                <div class="explanation-card">
+                                    <h4>Totale Perdite</h4>
+                                    <div class="formula-container">
+                                        <div class="formula">
+                                            <span class="formula-part">Totale Perdite</span>
+                                            <span class="formula-operator">=</span>
+                                            <span class="formula-part">Somma di tutti i valori negativi della colonna RICAVO</span>
+                                        </div>
+                                    </div>
+                                    <p>
+                                        Rappresenta la somma di tutte le perdite realizzate dalle operazioni concluse in negativo.
+                                    </p>
+                                </div>
+                                
+                                <div class="explanation-card">
+                                    <h4>Relazione tra Guadagni/Perdite e Ricavi Totali</h4>
+                                    <div class="formula-container">
+                                        <div class="formula">
+                                            <span class="formula-part">Ricavo Totale Trade</span>
+                                            <span class="formula-operator">=</span>
+                                            <span class="formula-part">Totale Guadagni</span>
+                                            <span class="formula-operator">-</span>
+                                            <span class="formula-part">Totale Perdite</span>
+                                        </div>
+                                    </div>
+                                    <p>
+                                        La differenza tra il totale guadagni e il totale perdite sarà sempre equivalente al Ricavo Totale Trade, 
+                                        che include già il Saveback ma esclude gli interessi di giacenza.
+                                    </p>
+                                </div>
+                                
+                                <p class="important-note">
+                                    <i class="fas fa-exclamation-circle"></i> Importante: Sia "Totale Guadagni" che "Totale Perdite" non considerano gli investimenti ancora aperti (Buy trade). 
+                                    Per includere questi investimenti nei calcoli, devi aggiungere manualmente il loro valore attuale. È simile al lasciare vuota una cella per gli investimenti ancora aperti nel foglio Excel che usavo.
+                                </p>
+                            </div>
+
+                            <!-- Nuova sezione per la spiegazione del Saveback -->
+                            <div class="explanation-section">
+                                <h3><i class="fas fa-undo-alt"></i> Saveback: Come viene gestito</h3>
+                                <div class="explanation-card">
+                                    <h4>Saveback di Trade Republic</h4>
+                                    <p>
+                                        Il Saveback è un cashback dell'1% fornito da Trade Republic che viene automaticamente reinvestito in un ETF specifico.
+                                    </p>
+                                    <p>
+                                        <strong>Importante:</strong> Il Saveback è già incluso nel Ricavo Totale Trade e non deve essere sommato separatamente al ricavo delle operazioni di trading. Aggiungerlo nuovamente porterebbe a un conteggio doppio.
+                                    </p>
+                                    <p>
+                                        Nella visualizzazione del Ricavo Totale Trade, il valore del Saveback è mostrato come componente già inclusa nel totale, per maggiore trasparenza.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

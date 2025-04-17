@@ -61,6 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalSaveback = document.getElementById('total-saveback');
     const totalComprehensive = document.getElementById('total-comprehensive');
     
+    // Elementi per guadagni e perdite
+    const totalProfits = document.getElementById('total-profits');
+    const totalLosses = document.getElementById('total-losses');
+    
     // Loading overlay
     const loadingOverlay = document.querySelector('.loading-overlay');
     
@@ -187,11 +191,41 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Event listeners per i download CSV
     downloadOutputBtn.addEventListener('click', () => {
-        downloadCSV(outputTable, 'output_data.csv');
+        // Ottieni la data dal titolo del riepilogo
+        const summaryTitle = document.querySelector('.summary-container h2');
+        let dateText = '';
+        
+        if (summaryTitle) {
+            // Estrai la data dal titolo che ha il formato "Riepilogo Ricavi al [DATA]"
+            const titleText = summaryTitle.textContent;
+            const dateMatch = titleText.match(/al\s+(.+)$/);
+            if (dateMatch && dateMatch[1]) {
+                dateText = dateMatch[1].trim();
+            }
+        }
+        
+        // Crea il nome del file con la data corrente
+        const filename = dateText ? `Dettaglio Operazioni al ${dateText}.csv` : 'Dettaglio Operazioni.csv';
+        downloadCSV(outputTable, filename);
     });
     
     downloadFinalBtn.addEventListener('click', () => {
-        downloadCSV(finalTable, 'final_data.csv');
+        // Ottieni la data dal titolo del riepilogo
+        const summaryTitle = document.querySelector('.summary-container h2');
+        let dateText = '';
+        
+        if (summaryTitle) {
+            // Estrai la data dal titolo che ha il formato "Riepilogo Ricavi al [DATA]"
+            const titleText = summaryTitle.textContent;
+            const dateMatch = titleText.match(/al\s+(.+)$/);
+            if (dateMatch && dateMatch[1]) {
+                dateText = dateMatch[1].trim();
+            }
+        }
+        
+        // Crea il nome del file con la data corrente
+        const filename = dateText ? `Riepilogo Finale al ${dateText}.csv` : 'Riepilogo Finale.csv';
+        downloadCSV(finalTable, filename);
     });
     
     // Event listeners per ordinare le colonne delle tabelle
@@ -244,6 +278,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (rows && rows.length > 0) {
                 rows.forEach((row, index) => {
+                    // Filtra per includere anche Interessi Giacenza e Saveback, oltre a Buy trade e Sell trade Parziale
+                    if (row.TIPO_OPERAZIONE !== 'Buy trade' && 
+                        row.TIPO_OPERAZIONE !== 'Sell trade Parziale' && 
+                        row.TIPO_OPERAZIONE !== 'Interessi Giacenza' && 
+                        row.TIPO_OPERAZIONE !== 'Saveback') {
+                        return; // salta questa iterazione se non è uno dei tipi richiesti
+                    }
+                    
                     // Crea la descrizione della riga
                     let rowDescription;
                     
@@ -1450,6 +1492,8 @@ function populateFinalTable() {
             tr.classList.add('type-saveback');
         } else if (row.TIPO_OPERAZIONE === 'Buy trade') {
             tr.classList.add('type-buy-trade');
+        } else if (row.TIPO_OPERAZIONE === 'Sell trade Parziale') {
+            tr.classList.add('type-sell-trade-partial');
         } else if (row.RICAVO) {
             // Estrai il valore numerico del ricavo (rimuovendo il simbolo €)
             const ricavoStr = row.RICAVO.replace('€', '').trim();
@@ -1463,6 +1507,14 @@ function populateFinalTable() {
             }
         }
         
+        // Modifica il valore del ricavo per Buy trade e Sell trade Parziale
+        if (row.TIPO_OPERAZIONE === 'Buy trade' || row.TIPO_OPERAZIONE === 'Sell trade Parziale') {
+            // Aggiungi un punto interrogativo arancione in grassetto per indicare che il ricavo non è ancora calcolato
+            row.RICAVO = '<span class="pending-profit">?</span>';
+            // Lasciamo vuoto il ricavo percentuale
+            row.RICAVO_PERCENTUALE = '';
+        }
+        
         // Crea celle per ogni colonna con attributo title e possibilità di andare a capo
         tr.innerHTML = `
             <td title="${row.DATA_INIZIO || ''}">${row.DATA_INIZIO || ''}</td>
@@ -1474,11 +1526,28 @@ function populateFinalTable() {
             <td title="${row.PREZZO_DI_VENDITA || ''}">${row.PREZZO_DI_VENDITA || ''}</td>
             <td title="${row.PREZZO_UNITARIO_ACQUISTO || ''}">${row.PREZZO_UNITARIO_ACQUISTO || ''}</td>
             <td title="${row.PREZZO_UNITARIO_VENDITA || ''}">${row.PREZZO_UNITARIO_VENDITA || ''}</td>
-            <td title="${row.RICAVO || ''}">${row.RICAVO || ''}</td>
-            <td title="${row.RICAVO_PERCENTUALE || ''}">${row.RICAVO_PERCENTUALE || ''}</td>
+            <td title="${row.RICAVO && row.RICAVO.replace ? row.RICAVO.replace(/<[^>]*>/g, '') : row.RICAVO || ''}">${row.RICAVO || ''}</td>
+            <td title="${row.RICAVO_PERCENTUALE && row.RICAVO_PERCENTUALE.replace ? row.RICAVO_PERCENTUALE.replace(/<[^>]*>/g, '') : row.RICAVO_PERCENTUALE || ''}">${row.RICAVO_PERCENTUALE || ''}</td>
         `;
         
         tbody.appendChild(tr);
+        
+        // Applica le classi CSS per colorare solo i valori di ricavo
+        const cells = tr.querySelectorAll('td');
+        if (cells.length >= 10) {
+            const ricavoCell = cells[9]; // 10ª colonna (indice 9)
+            
+            if (row.RICAVO) {
+                const ricavoStr = row.RICAVO.replace('€', '').trim();
+                const ricavoVal = convertNumber(ricavoStr);
+                
+                if (ricavoVal > 0) {
+                    ricavoCell.classList.add('positive-value');
+                } else if (ricavoVal < 0) {
+                    ricavoCell.classList.add('negative-value');
+                }
+            }
+        }
     });
     
     // Ordina la tabella per data di fine (dalla più recente alla più lontana)
@@ -1630,19 +1699,44 @@ function createFinalResult() {
             // Prezzo unitario di vendita
             const prezzoSell = sellRow.PREZZO_UNITARIO || '';
             
-            risultatoFinale.push({
-                DATA_INIZIO: dataInizioFormatted,
-                DATA_FINE: dataFineFormatted,
-                TIPO_OPERAZIONE: 'Trade',
-                Descrizione: descrizione,
-                Quantita: normalizeNumericFormat(totalQty, true) + " azioni",
-                PREZZO_DI_ACQUISTO: normalizeNumericFormat(totalOut, true) + " €",
-                PREZZO_DI_VENDITA: inEntrata,
-                PREZZO_UNITARIO_ACQUISTO: normalizeNumericFormat(avgPriceBuy, true) + " €/azione",
-                PREZZO_UNITARIO_VENDITA: prezzoSell,
-                RICAVO: ricavoStr ? ricavoStr + " €" : "",
-                RICAVO_PERCENTUALE: ricavoPercStr ? ricavoPercStr + " %" : ""
-            });
+            // NUOVO: Calcola la quantità effettivamente venduta
+            const soldQty = convertNumber(sellRow.Quantita);
+            
+            // NUOVO: Verifica se è una vendita parziale (quantità venduta < quantità acquistata)
+            if (soldQty < totalQty) {
+                // È una vendita parziale - creiamo una singola riga
+                risultatoFinale.push({
+                    DATA_INIZIO: dataInizioFormatted,
+                    DATA_FINE: dataFineFormatted,
+                    TIPO_OPERAZIONE: 'Sell trade Parziale',
+                    Descrizione: descrizione,
+                    Quantita: `${normalizeNumericFormat(totalQty, true)} azioni comprate\n${normalizeNumericFormat(soldQty, true)} azioni vendute`,
+                    PREZZO_DI_ACQUISTO: normalizeNumericFormat(totalOut, true) + " €",
+                    PREZZO_DI_VENDITA: inEntrata,
+                    PREZZO_UNITARIO_ACQUISTO: normalizeNumericFormat(avgPriceBuy, true) + " €/azione",
+                    PREZZO_UNITARIO_VENDITA: prezzoSell,
+                    RICAVO: '',  // Rimosso il calcolo del ricavo per le vendite parziali
+                    RICAVO_PERCENTUALE: ''  // Rimosso il calcolo percentuale
+                });
+                
+                // Nota: non aggiungiamo più la riga Buy trade per le azioni rimanenti
+                
+            } else {
+                // Vendita completa (come prima)
+                risultatoFinale.push({
+                    DATA_INIZIO: dataInizioFormatted,
+                    DATA_FINE: dataFineFormatted,
+                    TIPO_OPERAZIONE: 'Trade',
+                    Descrizione: descrizione,
+                    Quantita: normalizeNumericFormat(totalQty, true) + " azioni",
+                    PREZZO_DI_ACQUISTO: normalizeNumericFormat(totalOut, true) + " €",
+                    PREZZO_DI_VENDITA: inEntrata,
+                    PREZZO_UNITARIO_ACQUISTO: normalizeNumericFormat(avgPriceBuy, true) + " €/azione",
+                    PREZZO_UNITARIO_VENDITA: prezzoSell,
+                    RICAVO: ricavoStr ? ricavoStr + " €" : "",
+                    RICAVO_PERCENTUALE: ricavoPercStr ? ricavoPercStr + " %" : ""
+                });
+            }
         } else {
             // Se abbiamo solo buy o solo sell
             if (buyRows.length > 0) {
@@ -1753,18 +1847,21 @@ function createFinalResult() {
             dataMaxInteressi = formatDate(new Date(Math.max.apply(null, dateInteressi)));
         }
         
+        // MODIFICATO: Sposta il valore da ricavo a prezzo di vendita
+        const prezzoVenditaFormatted = prezzoVendita ? prezzoVendita + " €" : "";
+        
         risultatoFinale.push({
             DATA_INIZIO: dataMinInteressi,
             DATA_FINE: dataMaxInteressi,
             TIPO_OPERAZIONE: 'Interessi Giacenza',
             Descrizione: row.Descrizione,
             Quantita: row.Quantita,
-            PREZZO_DI_ACQUISTO: row.PREZZO_DI_ACQUISTO,
-            PREZZO_DI_VENDITA: '',
+            PREZZO_DI_ACQUISTO: "0 €", // Imposta a 0 € invece che vuoto
+            PREZZO_DI_VENDITA: prezzoVenditaFormatted, // Sposta qui il valore che era nel ricavo
             PREZZO_UNITARIO_ACQUISTO: '',
             PREZZO_UNITARIO_VENDITA: '',
-            RICAVO: prezzoVendita,
-            RICAVO_PERCENTUALE: ''
+            RICAVO: prezzoVenditaFormatted, // Mantiene il ricavo come prima (uguale al prezzo di vendita)
+            RICAVO_PERCENTUALE: '' // Non calcoliamo percentuale perché il prezzo di acquisto è 0
         });
     }
     
@@ -1800,18 +1897,21 @@ function createFinalResult() {
             dataMaxSaveback = formatDate(new Date(Math.max.apply(null, dateSaveback)));
         }
         
+        // MODIFICATO: Sposta il valore da ricavo a prezzo di vendita
+        const prezzoVenditaFormatted = prezzoVendita ? prezzoVendita + " €" : "";
+        
         risultatoFinale.push({
             DATA_INIZIO: dataMinSaveback,
             DATA_FINE: dataMaxSaveback,
             TIPO_OPERAZIONE: 'Saveback',
             Descrizione: row.Descrizione,
             Quantita: row.Quantita,
-            PREZZO_DI_ACQUISTO: row.PREZZO_DI_ACQUISTO,
-            PREZZO_DI_VENDITA: '',
+            PREZZO_DI_ACQUISTO: "0 €", // Imposta a 0 € invece che vuoto
+            PREZZO_DI_VENDITA: prezzoVenditaFormatted, // Sposta qui il valore che era nel ricavo
             PREZZO_UNITARIO_ACQUISTO: '',
             PREZZO_UNITARIO_VENDITA: '',
-            RICAVO: prezzoVendita,
-            RICAVO_PERCENTUALE: ''
+            RICAVO: prezzoVenditaFormatted, // Mantiene il ricavo come prima (uguale al prezzo di vendita)
+            RICAVO_PERCENTUALE: '' // Non calcoliamo percentuale perché il prezzo di acquisto è 0
         });
     }
     
@@ -1864,10 +1964,11 @@ function createFinalResult() {
         const ordine = {
             'Buy trade': 1,
             'Trade': 2,
-            'Sell trade': 3,
-            'Warrant Exercise': 4,
-            'Interessi Giacenza': 5,
-            'Saveback': 6
+            'Sell trade Parziale': 3,
+            'Sell trade': 4,
+            'Warrant Exercise': 5,
+            'Interessi Giacenza': 6,
+            'Saveback': 7
         };
         
         const orderA = ordine[a.TIPO_OPERAZIONE] || 99;
@@ -1949,7 +2050,14 @@ function calculateAndDisplayTotals() {
     const risultatoFinale = createFinalResult();
     
     // Calcolo totale dei Trade (esclusi i Buy trade che sono quelli attualmente investiti)
-    const datiTrade = risultatoFinale.filter(row => row.TIPO_OPERAZIONE === 'Trade');
+    const datiTrade = risultatoFinale.filter(row => 
+        row.TIPO_OPERAZIONE === 'Trade'
+    );
+    
+    // Aggiungi anche le vendite parziali ma solo per il volume, non per i ricavi
+    const datiVenditeParziali = risultatoFinale.filter(row => 
+        row.TIPO_OPERAZIONE === 'Sell trade Parziale'
+    );
     
     // Sommiamo i valori monetari
     let totaleAcquisto = 0;
@@ -1965,27 +2073,43 @@ function calculateAndDisplayTotals() {
     
     // Calcolo dei totali dai dati Trade
     datiTrade.forEach(row => {
-        // Estraggo i valori numerici (rimuovendo i simboli)
-        const acquisto = row.PREZZO_DI_ACQUISTO ? row.PREZZO_DI_ACQUISTO.replace('€', '').replace('/azione', '').trim() : '';
-        const vendita = row.PREZZO_DI_VENDITA ? row.PREZZO_DI_VENDITA.replace('€', '').replace('/azione', '').trim() : '';
-        const ricavo = row.RICAVO ? row.RICAVO.replace('€', '').replace('/azione', '').trim() : '';
-        
-        // Converto in numeri
-        const acquistoVal = convertNumber(acquisto);
-        const venditaVal = convertNumber(vendita);
-        const ricavoVal = convertNumber(ricavo);
-        
-        // Aggiungo al totale
-        totaleAcquisto += acquistoVal;
-        totaleVendita += venditaVal;
-        totaleRicavo += ricavoVal;
-        
-        // Separazione guadagni e perdite - usando il ricavo reale
-        if (ricavoVal > 0) {
-            totaleGuadagni += ricavoVal;
-        } else if (ricavoVal < 0) {
-            totalePerdite += ricavoVal;
+        // Processa solo i dati di commercio con valori numerici
+        if (row.PREZZO_DI_ACQUISTO) {
+            const prezzoAcquisto = convertNumber(row.PREZZO_DI_ACQUISTO.replace('€', '').trim());
+            totaleAcquisto += prezzoAcquisto;
         }
+        
+        if (row.PREZZO_DI_VENDITA) {
+            const prezzoVendita = convertNumber(row.PREZZO_DI_VENDITA.replace('€', '').trim());
+            totaleVendita += prezzoVendita;
+        }
+        
+        if (row.RICAVO) {
+            const ricavo = convertNumber(row.RICAVO.replace('€', '').trim());
+            totaleRicavo += ricavo;
+            
+            // Aggiungi ai totali di guadagni o perdite
+            if (ricavo > 0) {
+                totaleGuadagni += ricavo;
+            } else if (ricavo < 0) {
+                totalePerdite += ricavo;
+            }
+        }
+    });
+    
+    // Aggiungi le vendite parziali solo al volume di vendita, non al ricavo
+    datiVenditeParziali.forEach(row => {
+        if (row.PREZZO_DI_ACQUISTO) {
+            // Non aggiungiamo al totale degli acquisti perché non vogliamo contare due volte
+            // i prezzi di acquisto quando si completa la vendita
+        }
+        
+        if (row.PREZZO_DI_VENDITA) {
+            const prezzoVendita = convertNumber(row.PREZZO_DI_VENDITA.replace('€', '').trim());
+            totaleVendita += prezzoVendita;
+        }
+        
+        // Non calcoliamo ricavi per le vendite parziali
     });
     
     // Controlla se ci sono valori aggiunti associati a Buy trade
@@ -2071,65 +2195,46 @@ function calculateAndDisplayTotals() {
     totalInterest.textContent = `${normalizeNumericFormat(interessiValArrotondato, true)} €`;
     totalSaveback.textContent = `${normalizeNumericFormat(savebackValArrotondato, true)} €`;
     // Per il totale complessivo, includiamo anche i valori aggiunti associati ai Buy trade
-    const totalComprehensiveValue = ricavoTotaleComplessivo + totaleValoriAggiuntiBuyTrade;
+    // Nota: ora sommiamo solo gli interessi giacenza, non il saveback che è già incluso nel Ricavo Totale Trade
+    const totalComprehensiveValue = totalTradeValue + interessiVal;
     totalComprehensive.textContent = `${normalizeNumericFormat(Math.round(totalComprehensiveValue * 1000) / 1000, true)} €`;
     
-    // Funzione per aggiornare i totali di guadagni e perdite
-    function updateProfitLoss() {
-        let guadagniFinali = totaleGuadagni;
-        
-        // Se il toggle è attivo, includi saveback e interessi giacenza nei guadagni
-        if (includeSavebackToggle.checked) {
-            guadagniFinali += interessiVal + savebackVal;
-        }
-        
-        // Aggiorna i valori visualizzati
-        totalProfits.textContent = `${normalizeNumericFormat(Math.round(guadagniFinali * 1000) / 1000, true)} €`;
-        totalLosses.textContent = `${normalizeNumericFormat(Math.round(totalePerdite * 1000) / 1000, true)} €`;
+    // Assegna la classe appropriata in base al segno del valore per "Ricavo Totale Trade"
+    totalTrade.classList.remove('positive-value', 'negative-value');
+    if (totalTradeValue > 0) {
+        totalTrade.classList.add('positive-value');
+    } else if (totalTradeValue < 0) {
+        totalTrade.classList.add('negative-value');
     }
     
-    // Rimuovi eventuali listener esistenti prima di aggiungerne uno nuovo
-    includeSavebackToggle.removeEventListener('change', window.updateProfitLossHandler);
+    // Assegna la classe appropriata in base al segno del valore per "Ricavo Totale Complessivo"
+    totalComprehensive.classList.remove('positive-value', 'negative-value');
+    if (totalComprehensiveValue > 0) {
+        totalComprehensive.classList.add('positive-value');
+    } else if (totalComprehensiveValue < 0) {
+        totalComprehensive.classList.add('negative-value');
+    }
     
-    // Mantieni un riferimento alla funzione nel global scope per poterla rimuovere in futuro
-    window.updateProfitLossHandler = updateProfitLoss;
+    // Aggiorna i valori dei guadagni e perdite (ora sempre senza includere saveback e interessi)
+    totalProfits.textContent = `${normalizeNumericFormat(Math.round(totaleGuadagni * 1000) / 1000, true)} €`;
+    totalLosses.textContent = `${normalizeNumericFormat(Math.round(totalePerdite * 1000) / 1000, true)} €`;
     
-    // Aggiungi il nuovo listener
-    includeSavebackToggle.addEventListener('change', window.updateProfitLossHandler);
+    // Assegna i colori ai guadagni e alle perdite (sempre positivo per guadagni, sempre negativo per perdite)
+    totalProfits.classList.add('positive-value');
+    totalLosses.classList.add('negative-value');
     
-    // Esegui il calcolo iniziale
-    updateProfitLoss();
-    
-    // Applica le classi di colore in base ai valori
-    
-    // Rimuovi tutte le classi di colore per iniziare
-    if (totalTradeCard) {
-        totalTradeCard.classList.remove('profit-positive', 'profit-negative');
+    // Gestisci anche la copia del Ricavo Totale Trade
+    const tradeCopy = document.querySelector('.amount.trade-copy');
+    if (tradeCopy) {
+        tradeCopy.textContent = totalTrade.textContent;
+        
+        // Sincronizza anche i colori - prima rimuovo classi esistenti
+        tradeCopy.classList.remove('positive-value', 'negative-value');
         if (totalTradeValue > 0) {
-            totalTradeCard.classList.add('profit-positive');
+            tradeCopy.classList.add('positive-value');
         } else if (totalTradeValue < 0) {
-            totalTradeCard.classList.add('profit-negative');
+            tradeCopy.classList.add('negative-value');
         }
-    }
-    
-    // Per il Ricavo Totale Complessivo
-    if (totalComprehensiveCard) {
-        totalComprehensiveCard.classList.remove('profit-positive', 'profit-negative');
-        totalComprehensiveCard.classList.add('comprehensive'); // Aggiungi sempre questa classe
-        if (totalComprehensiveValue > 0) {
-            totalComprehensiveCard.classList.add('profit-positive');
-        } else if (totalComprehensiveValue < 0) {
-            totalComprehensiveCard.classList.add('profit-negative');
-        }
-    }
-    
-    // Per Interessi e Saveback
-    if (totalInterestCard) {
-        totalInterestCard.classList.add('interest');
-    }
-    
-    if (totalSavebackCard) {
-        totalSavebackCard.classList.add('saveback');
     }
 }
 
@@ -2138,16 +2243,27 @@ function setupTablesAndSelectors() {
     // Definisci la funzione per inizializzare e aggiornare il selettore di righe
     const updateRowSelector = setupAdditionalValuesHandling();
     
-    // Aggiungi un listener per il tab finale
-    const finalTabBtn = document.querySelector('[data-tab="final-csv"]');
-    if (finalTabBtn) {
-        finalTabBtn.addEventListener('click', () => {
-            // Quando si clicca sul tab di riepilogo, aggiorna il selettore di righe
-            if (typeof updateRowSelector === 'function') {
+    // Gestione dei tab
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Rimuovi la classe active da tutti i bottoni e pannelli
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabPanes.forEach(p => p.classList.remove('active'));
+            
+            // Aggiungi la classe active al bottone corrente e al pannello corrispondente
+            btn.classList.add('active');
+            const target = btn.getAttribute('data-tab');
+            document.getElementById(target).classList.add('active');
+            
+            // Se stiamo cliccando sul tab di riepilogo finale, aggiorna il selettore di righe
+            if (target === 'final-csv' && typeof updateRowSelector === 'function') {
                 updateRowSelector();
             }
         });
-    }
+    });
     
     // Esporta la funzione di aggiornamento per poterla chiamare dopo aver elaborato il file
     window.updateRowSelector = updateRowSelector;
@@ -2472,38 +2588,137 @@ function applyAdditionalValuesToRows(results) {
                     
                     console.log(`Riga ${rowIndex} convertita da Buy trade a Trade con ricavo ${ricavo}`);
                     
+                } else if (row.TIPO_OPERAZIONE === 'Sell trade Parziale') {
+                    // MODIFICATO: Quando si aggiunge un valore a una vendita parziale, la convertiamo in Trade completato
+                    
+                    // Estrai i valori esistenti
+                    // Per il nuovo formato "X azioni comprate\nY azioni vendute", estraiamo solo la parte delle azioni vendute
+                    let quantitaVenduta = 0;
+                    if (row.Quantita && row.Quantita.includes('azioni vendute')) {
+                        const match = row.Quantita.match(/(\d+[,.]?\d*)\s+azioni vendute/);
+                        if (match) {
+                            const qtyStr = match[1].replace(',', '.');
+                            quantitaVenduta = parseFloat(qtyStr);
+                        }
+                    } else {
+                        // Fallback al vecchio formato
+                        quantitaVenduta = convertNumber(row.Quantita.replace('azioni', '').trim());
+                    }
+                    
+                    // Estrai anche la quantità totale acquistata
+                    let quantitaTotaleAcquistata = 0;
+                    if (row.Quantita && row.Quantita.includes('azioni comprate')) {
+                        const match = row.Quantita.match(/(\d+[,.]?\d*)\s+azioni comprate/);
+                        if (match) {
+                            const qtyStr = match[1].replace(',', '.');
+                            quantitaTotaleAcquistata = parseFloat(qtyStr);
+                        }
+                    }
+                    
+                    // Calcola quantità residua (quella che stiamo vendendo ora)
+                    const quantitaResidua = quantitaTotaleAcquistata - quantitaVenduta;
+                    
+                    const prezzoAcquisto = convertNumber(row.PREZZO_DI_ACQUISTO.replace('€', '').trim());
+                    const vecchioPrezzoVendita = convertNumber(row.PREZZO_DI_VENDITA.replace('€', '').trim());
+                    
+                    // Estrai il vecchio prezzo unitario di vendita
+                    let vecchioPrezzoUnitarioVendita = 0;
+                    if (row.PREZZO_UNITARIO_VENDITA) {
+                        vecchioPrezzoUnitarioVendita = convertNumber(row.PREZZO_UNITARIO_VENDITA.replace('€/azione', '').trim());
+                    }
+                    
+                    // Calcola il prezzo unitario del nuovo valore aggiunto (valore aggiunto diviso quantità residua)
+                    const nuovoPrezzoUnitario = quantitaResidua > 0 ? value / quantitaResidua : 0;
+                    
+                    // Calcola il nuovo prezzo di vendita totale
+                    const nuovoPrezzoVendita = vecchioPrezzoVendita + value;
+                    row.PREZZO_DI_VENDITA = `${normalizeNumericFormat(nuovoPrezzoVendita, true)} €`;
+                    
+                    // Calcola la media ponderata per il prezzo unitario di vendita
+                    if (quantitaVenduta > 0 && quantitaResidua > 0) {
+                        // Media ponderata: (prezzo1 * quantità1 + prezzo2 * quantità2) / (quantità1 + quantità2)
+                        const prezzoUnitarioVendita = (vecchioPrezzoUnitarioVendita * quantitaVenduta + nuovoPrezzoUnitario * quantitaResidua) / (quantitaVenduta + quantitaResidua);
+                        row.PREZZO_UNITARIO_VENDITA = `${normalizeNumericFormat(prezzoUnitarioVendita, true)} €/azione`;
+                    } else {
+                        row.PREZZO_UNITARIO_VENDITA = '';
+                    }
+                    
+                    // Ora che l'operazione è completata, calcoliamo il ricavo
+                    const ricavo = nuovoPrezzoVendita - prezzoAcquisto;
+                    row.RICAVO = `${normalizeNumericFormat(ricavo, true)} €`;
+                    
+                    // Calcoliamo il ricavo percentuale
+                    if (prezzoAcquisto > 0) {
+                        const ricavoPercentuale = (ricavo / prezzoAcquisto) * 100;
+                        row.RICAVO_PERCENTUALE = `${normalizeNumericFormat(ricavoPercentuale, true)} %`;
+                    } else {
+                        row.RICAVO_PERCENTUALE = '';
+                    }
+                    
+                    // Quando si completa la vendita, aggiorniamo la quantità mostrata
+                    // Mostra la quantità totale (venduta + residua)
+                    row.Quantita = `${normalizeNumericFormat(quantitaVenduta + quantitaResidua, true)} azioni`;
+                    
+                    // Cambia il tipo di operazione a 'Trade' invece di 'Sell trade Parziale'
+                    row.TIPO_OPERAZIONE = 'Trade';
+                    
+                    console.log(`Riga ${rowIndex} convertita da Sell trade Parziale a Trade con ricavo ${ricavo}`);
+                    
                 } else if (row.TIPO_OPERAZIONE === 'Trade') {
                     // Per i Trade esistenti, aggiorniamo il prezzo di vendita e ricalcoliamo
                     
                     // Estrai i valori esistenti
+                    const quantitaTotale = convertNumber(row.Quantita.replace('azioni', '').trim());
                     const prezzoAcquisto = convertNumber(row.PREZZO_DI_ACQUISTO.replace('€', '').trim());
                     const vecchioPrezzoVendita = convertNumber(row.PREZZO_DI_VENDITA.replace('€', '').trim());
                     
-                    // Calcola il nuovo prezzo di vendita
+                    // Estrai il vecchio prezzo unitario di vendita
+                    let vecchioPrezzoUnitarioVendita = 0;
+                    if (row.PREZZO_UNITARIO_VENDITA) {
+                        vecchioPrezzoUnitarioVendita = convertNumber(row.PREZZO_UNITARIO_VENDITA.replace('€/azione', '').trim());
+                    }
+                    
+                    // Stimiamo la quantità per la vendita precedente usando il prezzo di vendita e il prezzo unitario
+                    let quantitaVenditaPrecedente = 0;
+                    if (vecchioPrezzoUnitarioVendita > 0) {
+                        quantitaVenditaPrecedente = vecchioPrezzoVendita / vecchioPrezzoUnitarioVendita;
+                    }
+                    
+                    // Calcola il prezzo unitario del nuovo valore aggiunto
+                    // Assumiamo che il nuovo valore sia per le azioni rimanenti (quantitaTotale - quantitaVenditaPrecedente)
+                    const quantitaResidua = Math.max(0, quantitaTotale - quantitaVenditaPrecedente);
+                    const nuovoPrezzoUnitario = quantitaResidua > 0 ? value / quantitaResidua : 0;
+                    
+                    // Calcola il nuovo prezzo di vendita totale
                     const nuovoPrezzoVendita = vecchioPrezzoVendita + value;
                     row.PREZZO_DI_VENDITA = `${normalizeNumericFormat(nuovoPrezzoVendita, true)} €`;
                     
-                    // Aggiorna il prezzo unitario di vendita
-                    const quantita = convertNumber(row.Quantita.replace('azioni', '').trim());
-                    if (quantita > 0) {
-                        // Rimuovi la parte "€/azione" e mantieni solo il valore numerico
-                        row.PREZZO_UNITARIO_VENDITA = `${normalizeNumericFormat(nuovoPrezzoVendita / quantita, true)} €/azione`;
+                    // Calcola la media ponderata per il prezzo unitario di vendita
+                    if (quantitaTotale > 0) {
+                        let prezzoUnitarioVendita;
+                        if (quantitaVenditaPrecedente > 0 && quantitaResidua > 0) {
+                            // Media ponderata: (prezzo1 * quantità1 + prezzo2 * quantità2) / (quantità1 + quantità2)
+                            prezzoUnitarioVendita = (vecchioPrezzoUnitarioVendita * quantitaVenditaPrecedente + nuovoPrezzoUnitario * quantitaResidua) / quantitaTotale;
+                        } else {
+                            // Se non abbiamo dati precedenti, semplicemente dividiamo il prezzo totale per la quantità
+                            prezzoUnitarioVendita = nuovoPrezzoVendita / quantitaTotale;
+                        }
+                        row.PREZZO_UNITARIO_VENDITA = `${normalizeNumericFormat(prezzoUnitarioVendita, true)} €/azione`;
                     } else {
                         row.PREZZO_UNITARIO_VENDITA = '/';
                         row.Quantita = '/';
                     }
                     
-                    // Ricalcola il ricavo (aggiungendo direttamente il valore aggiunto)
-                    // Correggiamo qui: il ricavo deve aumentare del valore aggiunto
-                    // anziché essere calcolato come differenza tra nuovo prezzo di vendita e prezzo di acquisto
-                    const vecchioRicavo = convertNumber(row.RICAVO.replace('€', '').trim());
-                    const nuovoRicavo = vecchioRicavo + value;
+                    // Ricalcola il ricavo
+                    const nuovoRicavo = nuovoPrezzoVendita - prezzoAcquisto;
                     row.RICAVO = `${normalizeNumericFormat(nuovoRicavo, true)} €`;
                     
                     // Ricalcola il ricavo percentuale
                     if (prezzoAcquisto > 0) {
                         const ricavoPercentuale = (nuovoRicavo / prezzoAcquisto) * 100;
                         row.RICAVO_PERCENTUALE = `${normalizeNumericFormat(ricavoPercentuale, true)} %`;
+                    } else {
+                        row.RICAVO_PERCENTUALE = '';
                     }
                     
                     console.log(`Riga ${rowIndex} (Trade) aggiornata: nuovo prezzo vendita ${nuovoPrezzoVendita}, ricavo ${nuovoRicavo}`);
@@ -2518,8 +2733,8 @@ function applyAdditionalValuesToRows(results) {
                     // Aggiorna il ricavo con il nuovo valore
                     row.RICAVO = `${normalizeNumericFormat(nuovoRicavo, true)} €`;
                     
-                    // Manteniamo il campo prezzo di vendita vuoto (o come era prima)
-                    row.PREZZO_DI_VENDITA = '';
+                    // Copiamo il valore del ricavo anche nella colonna PREZZO_DI_VENDITA
+                    row.PREZZO_DI_VENDITA = row.RICAVO;
                     
                     // Aggiorna sempre la DATA_FINE con la data odierna
                     row.DATA_FINE = todayFormatted;
