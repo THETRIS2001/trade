@@ -22,6 +22,12 @@ let loadingOverlay;
 let additionalValuesSection;
 let resultsSection;
 
+// Variabili globali per i grafici
+let tradeChart = null;
+let chartPeriod = 'monthly';
+let chartYear = new Date().getFullYear();
+let availableYears = [];
+
 // Funzione globale per la gestione dei valori aggiuntivi
 let setupAdditionalValuesHandling;
 
@@ -505,6 +511,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Aggiorna la data del riepilogo
                 updateSummaryDate();
+                
+                // Aggiorna il selettore delle righe immediatamente
+                if (typeof window.updateRowSelector === 'function') {
+                    window.updateRowSelector();
+                }
             }
         } catch (e) {
             alert('Errore: Inserisci un valore numerico valido.');
@@ -569,6 +580,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Aggiorna la data del riepilogo
                     updateSummaryDate();
+                    
+                    // Aggiorna il selettore delle righe immediatamente
+                    if (typeof window.updateRowSelector === 'function') {
+                        window.updateRowSelector();
+                    }
                 }
             });
         });
@@ -610,6 +626,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Setup delle tabelle e dei selettori di righe
     setupTablesAndSelectors();
+    
+    // Setup dei grafici
+    setupChartEventHandlers();
 });
 
 // Funzione per ordinare le tabelle
@@ -1563,6 +1582,7 @@ function createFinalResult() {
     
     finalData.dfWarrant.forEach(row => {
         if (row.Descrizione && row.Descrizione.includes('ISIN')) {
+            // Estrai l'ISIN dalla descrizione (formato: "for ISIN DE000XXX")
             const isin = row.Descrizione.split('ISIN ')[1].trim();
             const inEntrata = convertNumber(row.PREZZO_DI_VENDITA);
             warrantIsinDict[isin] = inEntrata;
@@ -1613,28 +1633,69 @@ function createFinalResult() {
     
     // Funzione per trovare date min e max per una descrizione
     const trovateDate = (descrizione) => {
-        // Prepara il risultato
         const result = {
             dataInizio: null,
-            dataFine: null
+            dataFine: null,
         };
         
+        // Estrai l'ISIN dalla descrizione (se presente)
+        let isin = null;
+        const descParts = descrizione.split(' ');
+        if (descParts.length > 0) {
+            isin = descParts[0]; // Il primo elemento è solitamente l'ISIN
+        }
+        
         // Cerca la descrizione in tutte le righe del dettaglio operazioni
-        const datePerDescrizione = [];
+        const dateDiAcquisto = [];
+        const dateDiVendita = [];
+        
         outputTableRows.forEach(row => {
             const descCell = row.querySelector('td:nth-child(4)');
-            if (descCell && descCell.textContent.trim() === descrizione) {
+            const tipoCell = row.querySelector('td:nth-child(2)');
+            const tipoOperazioneCell = row.querySelector('td:nth-child(3)');
+            
+            // Controlla se la descrizione corrisponde esattamente o se è un Warrant Exercise contenente l'ISIN
+            const isMatch = 
+                (descCell && descCell.textContent.trim() === descrizione) || 
+                (isin && tipoCell && tipoOperazioneCell && 
+                 tipoCell.textContent.trim() === 'Redditi' && 
+                 tipoOperazioneCell.textContent.trim() === 'Warrant Exercise' && 
+                 descCell && descCell.textContent.trim().includes(isin));
+            
+            if (isMatch) {
                 const date = estraiData(row);
+                
+                // Determina se è un acquisto o una vendita
+                const tipoOperazione = tipoOperazioneCell ? tipoOperazioneCell.textContent.trim() : '';
+                
                 if (date) {
-                    datePerDescrizione.push(date);
+                    // Aggiungi alle date di acquisto
+                    if (tipoOperazione === 'Buy trade' || tipoOperazione === 'Savings plan execution') {
+                        dateDiAcquisto.push(date);
+                    }
+                    // Aggiungi alle date di vendita
+                    else if (tipoOperazione === 'Sell trade' || tipoOperazione === 'Warrant Exercise') {
+                        dateDiVendita.push(date);
+                    }
+                    // Per altri tipi, aggiungi a entrambi (casi non specificati)
+                    else {
+                        dateDiAcquisto.push(date);
+                    }
                 }
             }
         });
         
-        // Se abbiamo trovato date, calcoliamo min e max
-        if (datePerDescrizione.length > 0) {
-            result.dataInizio = new Date(Math.min.apply(null, datePerDescrizione));
-            result.dataFine = new Date(Math.max.apply(null, datePerDescrizione));
+        // Imposta la data di inizio come la prima data di acquisto, se presente
+        if (dateDiAcquisto.length > 0) {
+            result.dataInizio = new Date(Math.min.apply(null, dateDiAcquisto));
+        }
+        
+        // Imposta la data di fine come l'ultima data di vendita, se presente
+        if (dateDiVendita.length > 0) {
+            result.dataFine = new Date(Math.max.apply(null, dateDiVendita));
+        } else {
+            // Se non ci sono vendite, lascia la data di fine come null
+            result.dataFine = null;
         }
         
         return result;
@@ -1647,14 +1708,19 @@ function createFinalResult() {
         // Calcola date min e max per questa descrizione
         const { dataInizio, dataFine } = trovateDate(descrizione);
         const dataInizioFormatted = formatDate(dataInizio);
-        const dataFineFormatted = formatDate(dataFine);
+        const dataFineFormatted = dataFine ? formatDate(dataFine) : '';
         
         // Estrai l'ISIN o il codice identificativo dal buy_row (se esiste)
         let isinToMatch = null;
         if (buyRows.length > 0) {
+            // Il primo elemento della descrizione è generalmente l'ISIN
             const descParts = descrizione.split(' ');
             if (descParts.length > 0) {
-                isinToMatch = descParts[0]; // Prendiamo la prima parte che dovrebbe essere l'ISIN
+                // Verifica se sembra un ISIN (inizia con DE, CH, US, ecc. seguito da numeri/lettere)
+                const isinPattern = /^([A-Z]{2}\d{10}|[A-Z]{2}[0-9A-Z]{9}\d)$/;
+                if (isinPattern.test(descParts[0])) {
+                    isinToMatch = descParts[0];
+                }
             }
         }
         
@@ -1771,7 +1837,7 @@ function createFinalResult() {
                     risultatoFinale.push({
                         DATA_INIZIO: dataInizioFormatted,
                         DATA_FINE: dataFineFormatted,
-                        TIPO_OPERAZIONE: 'Trade',
+                        TIPO_OPERAZIONE: 'Trade K.O.',
                         Descrizione: descrizione,
                         Quantita: normalizeNumericFormat(totalQty, true) + " azioni",
                         PREZZO_DI_ACQUISTO: normalizeNumericFormat(totalOut, true) + " €",
@@ -1925,22 +1991,57 @@ function createFinalResult() {
             
             // Cerco nelle descrizioni se c'è una corrispondenza
             for (const descUnica of descrizioniUniche) {
-                if (descUnica.includes(isin)) {
-                    abbinato = true;
-                    break;
+                const descParts = descUnica.split(' ');
+                if (descParts.length > 0) {
+                    // Verifica se il primo elemento è un ISIN e corrisponde
+                    const isinPattern = /^([A-Z]{2}\d{10}|[A-Z]{2}[0-9A-Z]{9}\d)$/;
+                    if (isinPattern.test(descParts[0]) && descParts[0] === isin) {
+                        abbinato = true;
+                        break;
+                    }
                 }
             }
             
             if (!abbinato) {
+                // Cerca la data del Warrant Exercise nella tabella originale
+                let dataWarrant = null;
+                outputTableRows.forEach(tableRow => {
+                    const descCell = tableRow.querySelector('td:nth-child(4)');
+                    const tipoCell = tableRow.querySelector('td:nth-child(2)');
+                    const tipoOpCell = tableRow.querySelector('td:nth-child(3)');
+                    
+                    // Trova la riga corrispondente nella tabella delle operazioni
+                    if (descCell && tipoCell && tipoOpCell && 
+                        descCell.textContent.trim().includes(isin) && 
+                        tipoCell.textContent.trim() === 'Redditi' && 
+                        tipoOpCell.textContent.trim() === 'Warrant Exercise') {
+                        
+                        // Estrai e converti la data
+                        const dateCell = tableRow.querySelector('td:first-child');
+                        if (dateCell) {
+                            const dateText = dateCell.textContent.trim();
+                            const date = estraiData(tableRow);
+                            if (date) {
+                                dataWarrant = date;
+                            }
+                        }
+                    }
+                });
+                
+                // Formatta la data solo se è stata trovata
+                const dataWarrantFormatted = dataWarrant ? formatDate(dataWarrant) : "";
+                
                 nonAbbinati.push({
-                    TIPO_OPERAZIONE: 'Warrant Exercise',
+                    DATA_INIZIO: "", // Non abbiamo data di acquisto
+                    DATA_FINE: dataWarrantFormatted, // Data del Warrant Exercise formattata
+                    TIPO_OPERAZIONE: 'Trade K.O.',
                     Descrizione: row.Descrizione,
                     Quantita: row.Quantita,
                     PREZZO_DI_ACQUISTO: row.PREZZO_DI_ACQUISTO,
                     PREZZO_DI_VENDITA: row.PREZZO_DI_VENDITA,
                     PREZZO_UNITARIO_ACQUISTO: '',
                     PREZZO_UNITARIO_VENDITA: '',
-                    RICAVO: '',
+                    RICAVO: row.PREZZO_DI_VENDITA, // Imposta il ricavo uguale al prezzo di vendita
                     RICAVO_PERCENTUALE: ''
                 });
             }
@@ -2051,7 +2152,7 @@ function calculateAndDisplayTotals() {
     
     // Calcolo totale dei Trade (esclusi i Buy trade che sono quelli attualmente investiti)
     const datiTrade = risultatoFinale.filter(row => 
-        row.TIPO_OPERAZIONE === 'Trade'
+        row.TIPO_OPERAZIONE === 'Trade' || row.TIPO_OPERAZIONE === 'Trade K.O.'
     );
     
     // Aggiungi anche le vendite parziali ma solo per il volume, non per i ricavi
@@ -2236,6 +2337,9 @@ function calculateAndDisplayTotals() {
             tradeCopy.classList.add('negative-value');
         }
     }
+    
+    // Aggiorna il grafico
+    updateTradeChart();
 }
 
 // Funzione per popolare le tabelle e inizializzare il selettore di righe
@@ -3216,3 +3320,796 @@ function addValueToOutputTable(value, description) {
         return `${day} ${month} ${year}`;
     }
 }
+
+// Funzione per creare o aggiornare il grafico
+function updateTradeChart() {
+    // Ottieni i dati dal riepilogo finale per le operazioni di tipo trade
+    const risultatoFinale = createFinalResult();
+    
+    // Filtra le operazioni di tipo 'Trade', 'Trade K.O.' e 'Warrant Exercise'
+    const datiTrade = risultatoFinale.filter(row => 
+        row.TIPO_OPERAZIONE === 'Trade' || row.TIPO_OPERAZIONE === 'Trade K.O.' || row.TIPO_OPERAZIONE === 'Warrant Exercise'
+    );
+    
+    // Strutture dati per guadagni, perdite e profitti
+    let datiPerPeriodo = {};
+    
+    // Popola gli anni disponibili
+    availableYears = [];
+    
+    // Plugin personalizzato per disegnare linee separatrici verticali tra i periodi
+    const separatorPlugin = {
+        id: 'periodSeparator',
+        beforeDraw(chart) {
+            const { ctx, chartArea, scales } = chart;
+            const { left, right, top, bottom } = chartArea;
+            
+            if (chartPeriod === 'monthly') {
+                // Memorizza i nomi dei mesi per rilevare i cambi
+                const mesi = [];
+                chart.data.labels.forEach(label => {
+                    // Estrae il nome del mese dalla label (es. "Gen 2024" -> "Gen")
+                    const mese = label.split(' ')[0];
+                    mesi.push(mese);
+                });
+                
+                // Disegna linee verticali al cambio del mese
+                ctx.save();
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.setLineDash([]);
+                
+                for (let i = 1; i < mesi.length; i++) {
+                    if (mesi[i] !== mesi[i - 1]) {
+                        // Calcola la posizione x tra le barre
+                        const xPos = (scales.x.getPixelForValue(i-1) + scales.x.getPixelForValue(i)) / 2;
+                        
+                        // Disegna la linea
+                        ctx.moveTo(xPos, top);
+                        ctx.lineTo(xPos, bottom);
+                    }
+                }
+                
+                ctx.stroke();
+                ctx.restore();
+            } else if (chartPeriod === 'weekly') {
+                // Memorizza i numeri delle settimane per rilevare i cambi di mese
+                const settimane = [];
+                chart.data.labels.forEach(label => {
+                    // Estrae la settimana dalla label (es. "Sett 1" -> estrae 1)
+                    const settimana = parseInt(label.split(' ')[1]);
+                    settimane.push(settimana);
+                });
+                
+                // Disegna linee verticali per ogni settimana
+                ctx.save();
+                ctx.beginPath();
+                ctx.lineWidth = 1; // Linea più sottile per non appesantire troppo la visualizzazione
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)'; // Più trasparente per non dominare visivamente
+                ctx.setLineDash([]);
+                
+                for (let i = 1; i < settimane.length; i++) {
+                    // Calcola la posizione x tra le barre per ogni settimana
+                    const xPos = (scales.x.getPixelForValue(i-1) + scales.x.getPixelForValue(i)) / 2;
+                    
+                    // Disegna la linea
+                    ctx.moveTo(xPos, top);
+                    ctx.lineTo(xPos, bottom);
+                    
+                    // Se è l'inizio di un nuovo mese (settimana 1 dopo altre settimane), falla più evidente
+                    if (settimane[i] === 1 && settimane[i-1] > 1) {
+                        // Prima chiudi il percorso corrente con linee sottili
+                        ctx.stroke();
+                        
+                        // Inizia un nuovo percorso per la linea più spessa
+                        ctx.beginPath();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                        
+                        // Ridisegna la stessa linea ma più spessa
+                        ctx.moveTo(xPos, top);
+                        ctx.lineTo(xPos, bottom);
+                        
+                        // Disegna questa linea più spessa
+                        ctx.stroke();
+                        
+                        // Resetta per continuare con le linee normali
+                        ctx.beginPath();
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+                    }
+                }
+                
+                ctx.stroke();
+                ctx.restore();
+            } else if (chartPeriod === 'yearly') {
+                // Per la visualizzazione annuale, dobbiamo identificare i gruppi di anni
+                const anni = [];
+                chart.data.labels.forEach(label => {
+                    // Estrae l'anno dalla label (es. "2023")
+                    const anno = parseInt(label);
+                    anni.push(anno);
+                });
+                
+                // Disegna linee verticali tra gli anni
+                ctx.save();
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.setLineDash([]);
+                
+                for (let i = 1; i < anni.length; i++) {
+                    // Calcola la posizione x tra le barre per ogni anno
+                    const xPos = (scales.x.getPixelForValue(i-1) + scales.x.getPixelForValue(i)) / 2;
+                    
+                    // Disegna la linea
+                    ctx.moveTo(xPos, top);
+                    ctx.lineTo(xPos, bottom);
+                    
+                    // Se passiamo anche da un decennio all'altro (es. da 2019 a 2020)
+                    if (Math.floor(anni[i] / 10) !== Math.floor(anni[i-1] / 10)) {
+                        // Prima chiudi il percorso corrente
+                        ctx.stroke();
+                        
+                        // Inizia un nuovo percorso per la linea più spessa
+                        ctx.beginPath();
+                        ctx.lineWidth = 3;
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                        
+                        // Ridisegna la stessa linea ma più spessa
+                        ctx.moveTo(xPos, top);
+                        ctx.lineTo(xPos, bottom);
+                        
+                        // Disegna questa linea più spessa
+                        ctx.stroke();
+                        
+                        // Resetta per continuare con le linee normali
+                        ctx.beginPath();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                    }
+                }
+                
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    };
+    
+    // Plugin per disegnare una linea orizzontale a 0 euro
+    const zeroLinePlugin = {
+        id: 'zeroLine',
+        // Cambiato da afterDraw a beforeDraw per renderlo sottostante al tooltip
+        beforeDraw(chart) {
+            const { ctx, chartArea, scales } = chart;
+            const { left, right, top, bottom } = chartArea;
+            
+            if (!scales.y) return;
+            
+            // Ottieni la posizione Y del valore zero
+            const zeroY = scales.y.getPixelForValue(0);
+            
+            // Disegna la linea orizzontale solo se zero è visibile nel grafico
+            if (zeroY >= top && zeroY <= bottom) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(left, zeroY);
+                ctx.lineTo(right, zeroY);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.setLineDash([]);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    };
+    
+    // Analizza le date di ultima vendita (DATA_FINE)
+    datiTrade.forEach(row => {
+        if (!row.DATA_FINE || !row.RICAVO) return;
+        
+        // Estrai la data
+        const dateParts = row.DATA_FINE.split(' ');
+        if (dateParts.length !== 3) return;
+        
+        const day = parseInt(dateParts[0]);
+        const monthNames = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+        const monthIndex = monthNames.map(m => m.toLowerCase()).indexOf(dateParts[1].toLowerCase());
+        if (monthIndex === -1) return;
+        
+        const year = parseInt('20' + dateParts[2]);
+        if (isNaN(year)) return;
+        
+        // Aggiungi l'anno alla lista degli anni disponibili
+        if (!availableYears.includes(year)) {
+            availableYears.push(year);
+        }
+        
+        // Estrai il valore del ricavo
+        const ricavoStr = row.RICAVO.replace('€', '').trim();
+        const ricavo = convertNumber(ricavoStr);
+        
+        // Determina la settimana dell'anno usando la norma ISO 8601
+        const date = new Date(Date.UTC(year, monthIndex, day));
+        const weekNumber = getWeekNumber(date);
+        
+        // Chiave per il periodo (settimana, mese o anno)
+        const weekKey = `${weekNumber}/${year}`;
+        const monthKey = `${monthIndex + 1}/${year}`;
+        const yearKey = `${year}`;
+        
+        // Inizializza l'oggetto del periodo se non esiste
+        if (chartPeriod === 'weekly') {
+            if (!datiPerPeriodo[weekKey]) {
+                datiPerPeriodo[weekKey] = { guadagni: 0, perdite: 0, profitti: 0 };
+            }
+            
+            // Aggiungi il valore al periodo appropriato
+            if (ricavo > 0) {
+                datiPerPeriodo[weekKey].guadagni += ricavo;
+                datiPerPeriodo[weekKey].profitti += ricavo; // Aggiungi ai profitti
+            } else if (ricavo < 0) {
+                // Salviamo le perdite come valore negativo per il grafico (rivolte verso il basso)
+                datiPerPeriodo[weekKey].perdite += ricavo; // Manteniamo il segno negativo
+                datiPerPeriodo[weekKey].profitti += ricavo; // Somma algebrica per i profitti
+            }
+        } else if (chartPeriod === 'monthly') {
+            if (!datiPerPeriodo[monthKey]) {
+                datiPerPeriodo[monthKey] = { guadagni: 0, perdite: 0, profitti: 0 };
+            }
+            
+            // Aggiungi il valore al periodo appropriato
+            if (ricavo > 0) {
+                datiPerPeriodo[monthKey].guadagni += ricavo;
+                datiPerPeriodo[monthKey].profitti += ricavo; // Aggiungi ai profitti
+            } else if (ricavo < 0) {
+                // Salviamo le perdite come valore negativo per il grafico (rivolte verso il basso)
+                datiPerPeriodo[monthKey].perdite += ricavo; // Manteniamo il segno negativo
+                datiPerPeriodo[monthKey].profitti += ricavo; // Somma algebrica per i profitti
+            }
+        } else {
+            if (!datiPerPeriodo[yearKey]) {
+                datiPerPeriodo[yearKey] = { guadagni: 0, perdite: 0, profitti: 0 };
+            }
+            
+            // Aggiungi il valore al periodo appropriato
+            if (ricavo > 0) {
+                datiPerPeriodo[yearKey].guadagni += ricavo;
+                datiPerPeriodo[yearKey].profitti += ricavo; // Aggiungi ai profitti
+            } else if (ricavo < 0) {
+                // Salviamo le perdite come valore negativo per il grafico (rivolte verso il basso)
+                datiPerPeriodo[yearKey].perdite += ricavo; // Manteniamo il segno negativo
+                datiPerPeriodo[yearKey].profitti += ricavo; // Somma algebrica per i profitti
+            }
+        }
+    });
+    
+    // Ordina gli anni in ordine decrescente
+    availableYears.sort((a, b) => b - a);
+    
+    // Popola il selettore degli anni
+    const yearSelector = document.getElementById('chart-year-selector');
+    if (yearSelector) {
+        // Salva la selezione attuale
+        const currentSelection = yearSelector.value;
+        
+        // Pulisci il selettore
+        yearSelector.innerHTML = '';
+        
+        // Aggiungi le opzioni degli anni
+        availableYears.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelector.appendChild(option);
+        });
+        
+        // Se non ci sono anni, aggiungi l'anno corrente
+        if (availableYears.length === 0) {
+            const option = document.createElement('option');
+            option.value = new Date().getFullYear();
+            option.textContent = new Date().getFullYear();
+            yearSelector.appendChild(option);
+        }
+        
+        // Ripristina la selezione precedente o imposta il primo anno disponibile
+        if (currentSelection && availableYears.includes(parseInt(currentSelection))) {
+            yearSelector.value = currentSelection;
+        } else if (availableYears.length > 0) {
+            yearSelector.value = availableYears[0];
+            chartYear = availableYears[0];
+        }
+    }
+    
+    // Funzione per calcolare il numero della settimana in un anno secondo lo standard ISO 8601
+    function getWeekNumber(date) {
+        // Crea una copia della data
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        
+        // Calcola il giovedì della stessa settimana
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        
+        // Inizio dell'anno che contiene il giovedì
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        
+        // Calcola il numero della settimana
+        // 86400000 = millisecondi in un giorno
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+    
+    // Funzione per ottenere la data di inizio di una settimana (ISO 8601 standard)
+    function getFirstDayOfWeek(year, weekNumber) {
+        // Calcola il primo giorno dell'anno
+        const firstDayOfYear = new Date(Date.UTC(year, 0, 1));
+        
+        // Se il primo giorno è un venerdì, il primo giorno della settimana 1 è il 4 gennaio
+        // Se è un sabato, è il 3 gennaio
+        // Se è una domenica, è il 2 gennaio
+        // Altrimenti, è lo stesso primo gennaio più i giorni necessari per arrivare a lunedì
+        const dayOfWeek = firstDayOfYear.getDay() || 7; // Converti 0 (domenica) in 7
+        const daysOffset = (dayOfWeek <= 4) ? 1 - dayOfWeek : 8 - dayOfWeek;
+        
+        // Primo giorno della prima settimana dell'anno
+        const firstDayOfFirstWeek = new Date(Date.UTC(year, 0, 1 + daysOffset));
+        
+        // Calcola primo giorno della settimana richiesta
+        const result = new Date(firstDayOfFirstWeek);
+        result.setDate(firstDayOfFirstWeek.getDate() + (weekNumber - 1) * 7);
+        
+        return result;
+    }
+    
+    // Funzione per ottenere la data di fine di una settimana (ISO 8601 standard)
+    function getLastDayOfWeek(year, weekNumber) {
+        // Ottieni il primo giorno della settimana richiesta (lunedì)
+        const firstDay = getFirstDayOfWeek(year, weekNumber);
+        
+        // Aggiungi 6 giorni per ottenere l'ultimo giorno della stessa settimana (domenica)
+        const lastDay = new Date(firstDay);
+        lastDay.setDate(firstDay.getDate() + 6);
+        
+        return lastDay;
+    }
+    
+    // Funzione per formattare una data nel formato "12 Set 2025"
+    function formatDateShort(date) {
+        const day = date.getDate();
+        const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+        const month = monthNames[date.getMonth()];
+        const year = date.getFullYear();
+        
+        return `${day} ${month} ${year}`;
+    }
+    
+    // Variabili per tenere traccia dei dati da visualizzare
+    let periodi = [];
+    let guadagni = [];
+    let perdite = [];
+    let profitti = [];
+    
+    if (chartPeriod === 'weekly') {
+        // Ottieni tutte le settimane dell'anno selezionato
+        // Ci sono 52-53 settimane in un anno
+        const totalWeeks = 53;
+        
+        // Ottieni la settimana corrente solo se stiamo visualizzando l'anno corrente
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const isCurrentYear = chartYear === currentYear;
+        
+        // Se è l'anno corrente, mostra solo fino alla settimana attuale
+        // altrimenti mostra tutte le settimane dell'anno
+        const maxWeek = isCurrentYear ? getWeekNumber(currentDate) : totalWeeks;
+        
+        for (let i = 1; i <= maxWeek; i++) {
+            const weekKey = `${i}/${chartYear}`;
+            periodi.push(`Sett ${i}`);
+            
+            if (datiPerPeriodo[weekKey]) {
+                guadagni.push(datiPerPeriodo[weekKey].guadagni);
+                perdite.push(datiPerPeriodo[weekKey].perdite);
+                profitti.push(datiPerPeriodo[weekKey].profitti);
+            } else {
+                guadagni.push(0);
+                perdite.push(0);
+                profitti.push(0);
+            }
+        }
+    } else if (chartPeriod === 'monthly') {
+        // Ottieni tutti i mesi dell'anno selezionato
+        const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+        
+        // Ottieni il mese corrente solo se stiamo visualizzando l'anno corrente
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const isCurrentYear = chartYear === currentYear;
+        
+        // Se è l'anno corrente, mostra solo fino al mese attuale
+        // altrimenti mostra tutti i mesi dell'anno
+        const maxMonth = isCurrentYear ? currentDate.getMonth() + 1 : 12; // +1 perché i mesi partono da 0
+        
+        for (let i = 0; i < maxMonth; i++) {
+            const monthKey = `${i + 1}/${chartYear}`;
+            periodi.push(monthNames[i]);
+            
+            if (datiPerPeriodo[monthKey]) {
+                guadagni.push(datiPerPeriodo[monthKey].guadagni);
+                perdite.push(datiPerPeriodo[monthKey].perdite);
+                profitti.push(datiPerPeriodo[monthKey].profitti);
+            } else {
+                guadagni.push(0);
+                perdite.push(0);
+                profitti.push(0);
+            }
+        }
+    } else {
+        // Per il grafico annuale, mostra tutti gli anni disponibili in ordine crescente
+        // Crea una copia dell'array degli anni e ordinali in ordine crescente per il grafico
+        const yearsForChart = [...availableYears].sort((a, b) => a - b);
+        
+        yearsForChart.forEach(year => {
+            const yearKey = `${year}`;
+            periodi.push(year.toString());
+            
+            if (datiPerPeriodo[yearKey]) {
+                guadagni.push(datiPerPeriodo[yearKey].guadagni);
+                perdite.push(datiPerPeriodo[yearKey].perdite);
+                profitti.push(datiPerPeriodo[yearKey].profitti);
+            } else {
+                guadagni.push(0);
+                perdite.push(0);
+                profitti.push(0);
+            }
+        });
+    }
+    
+    // Ottieni il contesto del canvas
+    const ctx = document.getElementById('trade-chart').getContext('2d');
+    
+    // Distruggi il grafico esistente se presente
+    if (tradeChart) {
+        tradeChart.destroy();
+    }
+    
+    // Verifica se ci sono dati da visualizzare
+    const hasDati = guadagni.some(val => val > 0) || perdite.some(val => val > 0) || profitti.some(val => val !== 0);
+    
+    // Se non ci sono dati, mostra un messaggio
+    if (!hasDati) {
+        // Pulisci il canvas
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        // Mostra un messaggio
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('Nessun dato disponibile per questo periodo', ctx.canvas.width / 2, ctx.canvas.height / 2);
+        
+        // Nascondi il selettore dell'anno se in modalità annuale
+        if (yearSelector) {
+            yearSelector.style.display = chartPeriod === 'monthly' ? 'block' : 'none';
+        }
+        
+        return;
+    }
+    
+    // Crea il nuovo grafico
+    tradeChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: periodi,
+            datasets: [
+                {
+                    label: 'Guadagni',
+                    data: guadagni,
+                    backgroundColor: 'rgba(46, 204, 113, 0.8)',
+                    borderColor: 'rgba(46, 204, 113, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    maxBarThickness: 40
+                },
+                {
+                    label: 'Perdite',
+                    data: perdite,
+                    backgroundColor: 'rgba(231, 76, 60, 0.8)',
+                    borderColor: 'rgba(231, 76, 60, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    maxBarThickness: 40
+                },
+                {
+                    label: 'Profitti',
+                    data: profitti,
+                    backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                    borderColor: 'rgba(52, 152, 219, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    maxBarThickness: 40,
+                    // Utilizziamo il tipo 'line' per questo dataset per distinguerlo meglio
+                    type: 'bar'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    beginAtZero: false, // Consenti valori negativi sull'asse Y
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        lineWidth: 1
+                    },
+                    border: {
+                        dash: [4, 4]
+                    },
+                    ticks: {
+                        font: {
+                            size: 11,
+                            family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                        },
+                        padding: 8,
+                        callback: function(value) {
+                            return value.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 });
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Euro (€)',
+                        font: {
+                            size: 13,
+                            weight: 'bold',
+                            family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                        },
+                        padding: {top: 10, bottom: 10}
+                    }
+                },
+                x: {
+                    grid: {
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        lineWidth: 1,
+                        drawOnChartArea: true,
+                        drawTicks: false,
+                        borderDash: [5, 5]
+                    },
+                    ticks: {
+                        font: {
+                            size: 11,
+                            family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                        },
+                        padding: 8,
+                        callback: function(value, index, values) {
+                            // Per la vista settimanale, mostra solo alcune etichette per evitare sovraffollamento
+                            if (chartPeriod === 'weekly') {
+                                return (index % 4 === 0 || index === 0 || index === values.length - 1) ? this.getLabelForValue(value) : '';
+                            }
+                            return this.getLabelForValue(value);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: chartPeriod === 'weekly' ? 'Settimana' : (chartPeriod === 'monthly' ? 'Mese' : 'Anno'),
+                        font: {
+                            size: 13,
+                            weight: 'bold',
+                            family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                        },
+                        padding: {top: 10, bottom: 10}
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 1)', // Rimossa trasparenza: da 0.9 a 1
+                    titleColor: '#333',
+                    titleFont: {
+                        size: 13,
+                        weight: 'bold',
+                        family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                    },
+                    bodyColor: '#333',
+                    bodyFont: {
+                        size: 12,
+                        family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                    },
+                    borderColor: 'rgba(0, 0, 0, 0.1)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    boxPadding: 6,
+                    usePointStyle: true,
+                    callbacks: {
+                        title: function(context) {
+                            // Se siamo in modalità settimanale, mostra l'intervallo di date della settimana
+                            if (chartPeriod === 'weekly') {
+                                const weekIndex = context[0].dataIndex;
+                                // Estrai il numero della settimana dal testo dell'etichetta (es. "Sett 7" -> 7)
+                                const weekLabel = context[0].label;
+                                const weekNumber = parseInt(weekLabel.split(' ')[1]);
+                                
+                                // Calcola le date di inizio e fine della settimana
+                                const firstDay = getFirstDayOfWeek(chartYear, weekNumber);
+                                const lastDay = getLastDayOfWeek(chartYear, weekNumber);
+                                
+                                // Formatta le date e restituisci l'intervallo
+                                return `${formatDateShort(firstDay)} - ${formatDateShort(lastDay)}`;
+                            }
+                            // Altrimenti, usa il titolo predefinito
+                            return context[0].label;
+                        },
+                        label: function(context) {
+                            const value = context.raw;
+                            // Per le perdite, mostriamo il valore assoluto per leggibilità, ma con il prefisso "-"
+                            const formattedValue = 
+                                context.dataset.label === 'Perdite' && value < 0 
+                                    ? '-' + Math.abs(value).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })
+                                    : value.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+                            
+                            return [
+                                context.dataset.label + ': ' + formattedValue
+                            ];
+                        }
+                    }
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 12,
+                            family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                        },
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                title: {
+                    display: true,
+                    text: chartPeriod === 'weekly'
+                        ? `Andamento Ricavi Settimanali ${chartYear}`
+                        : (chartPeriod === 'monthly' 
+                            ? `Andamento Ricavi Mensili ${chartYear}`
+                            : 'Andamento Ricavi Annuali'),
+                    font: {
+                        size: 16,
+                        weight: 'bold',
+                        family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                    },
+                    padding: {top: 10, bottom: 20},
+                    color: '#333'
+                }
+            }
+        },
+        plugins: [separatorPlugin, zeroLinePlugin]
+    });
+    
+    // Nascondi il selettore dell'anno solo in modalità annuale, mostralo in weekly e monthly
+    if (yearSelector) {
+        yearSelector.style.display = chartPeriod === 'yearly' ? 'none' : 'block';
+    }
+}
+
+// Funzione per impostare i gestori eventi per i grafici
+function setupChartEventHandlers() {
+    // Selettori per i controlli del grafico
+    const periodSelectors = document.querySelectorAll('input[name="chart-period"]');
+    const yearSelector = document.getElementById('chart-year-selector');
+    
+    // Aggiungi anni al selettore se disponibili
+    if (availableYears.length > 0) {
+        // Ordina gli anni in ordine decrescente (dal più recente)
+        availableYears.sort((a, b) => b - a);
+        
+        // Svuota il selettore
+        yearSelector.innerHTML = '';
+        
+        // Aggiungi le opzioni
+        availableYears.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelector.appendChild(option);
+        });
+        
+        // Seleziona l'anno corrente o il più recente disponibile
+        const currentYear = new Date().getFullYear();
+        if (availableYears.includes(currentYear)) {
+            yearSelector.value = currentYear;
+            chartYear = currentYear;
+        } else if (availableYears.length > 0) {
+            yearSelector.value = availableYears[0];
+            chartYear = availableYears[0];
+        }
+    } else {
+        // Se non ci sono dati, mostra solo l'anno corrente
+        const currentYear = new Date().getFullYear();
+        const option = document.createElement('option');
+        option.value = currentYear;
+        option.textContent = currentYear;
+        yearSelector.innerHTML = '';
+        yearSelector.appendChild(option);
+        chartYear = currentYear;
+    }
+    
+    // Gestisci il cambio di periodo (mensile/annuale)
+    periodSelectors.forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Effetto visivo: opacità ridotta durante l'aggiornamento
+            const chartContainer = document.querySelector('.chart-container');
+            chartContainer.style.opacity = '0.5';
+            chartContainer.style.transition = 'opacity 0.3s ease';
+            
+            // Aggiorna la selezione del periodo
+            chartPeriod = this.value;
+            
+            // Mostra il selettore dell'anno sia per settimanale che per mensile, ma non per annuale
+            document.querySelector('.chart-controls-container').style.display = 
+                chartPeriod === 'yearly' ? 'none' : 'block';
+            
+            // Aggiorna il grafico con breve ritardo per l'animazione
+            setTimeout(() => {
+                updateTradeChart();
+                // Ripristina l'opacità
+                chartContainer.style.opacity = '1';
+            }, 300);
+        });
+    });
+    
+    // Gestisci il cambio di anno
+    yearSelector.addEventListener('change', function() {
+        // Effetto visivo: opacità ridotta durante l'aggiornamento
+        const chartContainer = document.querySelector('.chart-container');
+        chartContainer.style.opacity = '0.5';
+        chartContainer.style.transition = 'opacity 0.3s ease';
+        
+        // Aggiorna l'anno selezionato
+        chartYear = parseInt(this.value);
+        
+        // Aggiorna il grafico con breve ritardo per l'animazione
+        setTimeout(() => {
+            updateTradeChart();
+            // Ripristina l'opacità
+            chartContainer.style.opacity = '1';
+        }, 300);
+    });
+    
+    // Nascondi il selettore dell'anno se la visualizzazione è annuale
+    if (chartPeriod === 'yearly') {
+        document.querySelector('.chart-controls-container').style.display = 'none';
+    }
+}
+
+// Aggiorniamo la funzione calculateAndDisplayTotals per aggiornare anche i grafici
+const originalCalculateAndDisplayTotals = calculateAndDisplayTotals;
+calculateAndDisplayTotals = function() {
+    // Chiama la funzione originale
+    originalCalculateAndDisplayTotals();
+    
+    // Aggiorna il grafico
+    updateTradeChart();
+};
+
+// Aggiungiamo l'inizializzazione del grafico quando il documento è pronto
+document.addEventListener('DOMContentLoaded', function() {
+    // ... other code ...
+    
+    // Setup dei grafici
+    setupChartEventHandlers();
+    
+    // ... other code ...
+});
+
+// Aggiorniamo la funzione populateFinalTable per aggiornare anche i grafici
+const originalPopulateFinalTable = populateFinalTable;
+populateFinalTable = function() {
+    // Chiama la funzione originale
+    originalPopulateFinalTable();
+    
+    // Aggiorna il grafico
+    updateTradeChart();
+};

@@ -120,7 +120,6 @@
                         <div class="summary-container">
                             <h2>Riepilogo Ricavi al</h2>
                             
-                            <!-- Nuova struttura unificata del riepilogo -->
                             <div class="summary-cards">
                                 <!-- Prima riga: Guadagni + Perdite = Ricavo Totale Trade -->
                                 <div class="summary-card profit" id="profits-card">
@@ -225,6 +224,30 @@
                                         <h3>Ricavo Totale Complessivo</h3>
                                         <p class="amount" id="total-comprehensive">0,00 €</p>
                                     </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Sezione grafico -->
+                            <div class="charts-section">
+                                <div class="chart-controls">
+                                    <div class="chart-period-selector">
+                                        <input type="radio" id="weekly" name="chart-period" value="weekly">
+                                        <label for="weekly">Settimanale</label>
+                                        
+                                        <input type="radio" id="monthly" name="chart-period" value="monthly" checked>
+                                        <label for="monthly">Mensile</label>
+                                        
+                                        <input type="radio" id="yearly" name="chart-period" value="yearly">
+                                        <label for="yearly">Annuale</label>
+                                    </div>
+                                    <div class="chart-controls-container">
+                                        <select id="chart-year-selector" class="chart-year-selector">
+                                            <!-- Le opzioni verranno popolate dinamicamente -->
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="trade-chart"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -437,6 +460,60 @@
                                     </p>
                                 </div>
                             </div>
+                            
+                            <!-- Nuova sezione per la spiegazione dei grafici -->
+                            <div class="explanation-section">
+                                <h3><i class="fas fa-chart-bar"></i> Grafici: Come interpretarli</h3>
+                                <div class="explanation-card">
+                                    <h4>Dati mostrati nei grafici</h4>
+                                    <p>
+                                        I grafici mostrano esclusivamente i dati relativi alle operazioni di trading concluse (guadagni, perdite e profitti), senza considerare gli interessi di giacenza e le operazioni ancora aperte.
+                                    </p>
+                                    <p>
+                                        <strong>Importante:</strong> Le barre verdi rappresentano i guadagni, quelle rosse le perdite, mentre quelle blu mostrano i profitti netti (differenza tra guadagni e perdite).
+                                    </p>
+                                </div>
+                                
+                                <div class="explanation-card">
+                                    <h4>Date di riferimento</h4>
+                                    <p>
+                                        I grafici utilizzano come riferimento temporale la data dell'ultima vendita di ogni operazione, non la data del primo acquisto o delle vendite intermedie.
+                                    </p>
+                                    <p>
+                                        Questo significa che un'operazione viene contabilizzata nel grafico solo quando è completamente conclusa, e appare nel mese/anno in cui è avvenuta l'ultima vendita.
+                                    </p>
+                                    <p class="note">
+                                        <i class="fas fa-info-circle"></i> Dai grafici non è possibile determinare la durata effettiva di un investimento (se è stato tenuto per un giorno o per un anno), poiché viene considerata solo la data finale di vendita, non il periodo intercorso tra il primo acquisto e l'ultima vendita.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Nuova sezione per la spiegazione fiscale -->
+                            <div class="explanation-section">
+                                <h3><i class="fas fa-file-invoice-dollar"></i> Aspetto Fiscale: Implicazioni per la Dichiarazione dei Redditi</h3>
+                                <div class="explanation-card">
+                                    <h4>Base imponibile per le tasse</h4>
+                                    <p>
+                                        Il "Ricavo Totale Trade" (mostrato nel riepilogo) o equivalentemente la barra blu dei profitti nei grafici rappresentano la cifra effettiva su cui calcolare le tasse da versare (a meno degli interessi di giacenza di poco conto).
+                                    </p>
+                                    <p>
+                                        Ai fini fiscali, infatti, non vengono considerate singolarmente le operazioni in profitto e quelle in perdita, ma il saldo netto delle operazioni finanziarie nell'anno solare (dal 1° gennaio al 31 dicembre).
+                                    </p>
+                                    <p>
+                                        <strong>Importante:</strong> La tassazione avviene sulla somma algebrica di guadagni e perdite realizzati nell'anno fiscale di riferimento. Se il saldo è positivo, sarà soggetto a imposta; se è negativo, potrà essere portato in compensazione negli anni successivi secondo i limiti previsti dalla normativa.
+                                    </p>
+                                </div>
+                                
+                                <div class="explanation-card">
+                                    <h4>Visualizzazione per anno fiscale</h4>
+                                    <p>
+                                        La visualizzazione annuale del grafico è particolarmente utile per avere una stima della base imponibile per ogni anno fiscale, facilitando la compilazione della dichiarazione dei redditi.
+                                    </p>
+                                    <p>
+                                        Osservando la barra blu dei profitti per ciascun anno, è possibile avere un'indicazione immediata dell'importo su cui verranno calcolate le imposte (al netto di eventuali detrazioni o compensazioni con perdite pregresse).
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -452,6 +529,7 @@
     <!-- Script esterni -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="app.js"></script>
 </body>
 </html> 
